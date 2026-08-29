@@ -127,12 +127,53 @@ export const EvolutionProvider: WhatsAppProvider = {
     if (state.ok && mapState(state.data?.instance?.state ?? state.data?.state) === "conectado") {
       return { status: "conectado" };
     }
-    const res = await call(c, `/instance/connect/${encodeURIComponent(c.instanceName)}`);
-    if (!res.ok) throw new Error(errorMessage(res.data, "Falha ao obter o QR Code"));
-    const base64: string | null = res.data?.base64 ?? res.data?.qrcode?.base64 ?? null;
-    const pairing: string | null = res.data?.pairingCode ?? res.data?.code ?? null;
-    if (!base64 && res.data?.instance?.state === "open") return { status: "conectado" };
-    return { status: "conectando", qrBase64: base64, pairingCode: pairing };
+
+    const pick = (d: any) => {
+      const base64: string | null =
+        d?.base64 ?? d?.qrcode?.base64 ?? d?.qrCode?.base64 ?? d?.qr?.base64 ?? d?.instance?.qrcode?.base64 ?? null;
+      // Texto bruto do QR (Evolution às vezes devolve só o "code")
+      const raw: string | null =
+        d?.code ?? d?.qrcode?.code ?? d?.qrCode?.code ?? d?.qr?.code ?? d?.instance?.qrcode?.code ?? null;
+      const pairing: string | null = d?.pairingCode ?? d?.qrcode?.pairingCode ?? null;
+      return { base64, raw, pairing };
+    };
+
+    let last: any = null;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const endpoints = [
+        `/instance/connect/${encodeURIComponent(c.instanceName)}`,
+        `/instance/qrcode/${encodeURIComponent(c.instanceName)}`,
+      ];
+      for (const path of endpoints) {
+        const res = await call(c, path);
+        last = res;
+        if (!res.ok) continue;
+        if (res.data?.instance?.state === "open" || res.data?.state === "open") {
+          return { status: "conectado" };
+        }
+        const { base64, raw, pairing } = pick(res.data);
+        if (base64) {
+          return {
+            status: "conectando",
+            qrBase64: base64.startsWith("data:") ? base64 : `data:image/png;base64,${base64}`,
+            pairingCode: pairing,
+          };
+        }
+        if (raw && raw.length > 20) {
+          const QRCode = await import("qrcode");
+          const dataUrl = await QRCode.toDataURL(raw, { margin: 1, width: 512 });
+          return { status: "conectando", qrBase64: dataUrl, pairingCode: pairing };
+        }
+        if (pairing) return { status: "conectando", qrBase64: null, pairingCode: pairing };
+      }
+      // A instância pode levar alguns instantes para gerar o QR
+      await new Promise((r) => setTimeout(r, 1200));
+    }
+
+    if (last && !last.ok) throw new Error(errorMessage(last.data, "Falha ao obter o QR Code"));
+    throw new Error(
+      "A Evolution API não retornou o QR Code. Verifique se a instância existe e está no estado 'close', e tente novamente.",
+    );
   },
 
   async getConnectionStatus(c) {

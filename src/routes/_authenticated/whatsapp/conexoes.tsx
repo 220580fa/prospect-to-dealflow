@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -352,22 +352,51 @@ function QrDialog({
 }) {
   const qr = useServerFn(getWhatsAppQrCode);
   const status = useServerFn(getWhatsAppStatus);
-  const [state, setState] = useState<{ qr?: string | null; status?: string; loading: boolean }>({
-    loading: false,
-  });
+  const [state, setState] = useState<{
+    qr?: string | null;
+    pairing?: string | null;
+    status?: string;
+    loading: boolean;
+  }>({ loading: false });
 
   const load = async () => {
     if (!connection) return;
     setState({ loading: true });
     try {
       const r: any = await qr({ data: { connectionId: connection["id"] } });
-      setState({ loading: false, qr: r.qrBase64, status: r.status });
+      setState({ loading: false, qr: r.qrBase64, pairing: r.pairingCode, status: r.status });
       if (r.status === "conectado") onDone();
     } catch (e) {
       setState({ loading: false });
       toast.error(e instanceof Error ? e.message : "Não foi possível obter o QR Code.");
     }
   };
+
+  // Gera o QR automaticamente ao abrir o diálogo
+  useEffect(() => {
+    if (connection) void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connection?.["id"]]);
+
+  // Enquanto o diálogo estiver aberto, confere o status a cada 5s
+  useEffect(() => {
+    if (!connection) return;
+    const t = setInterval(async () => {
+      try {
+        const r: any = await status({ data: { connectionId: connection["id"] } });
+        if (r.status === "conectado") {
+          setState((s) => ({ ...s, status: "conectado" }));
+          toast.success("WhatsApp conectado!");
+          onDone();
+          onOpenChange(false);
+        }
+      } catch {
+        /* silencioso */
+      }
+    }, 5000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connection?.["id"]]);
 
   const confirm = async () => {
     if (!connection) return;
@@ -415,8 +444,19 @@ function QrDialog({
               {state.loading ? "Gerando QR Code..." : "Clique em “Gerar QR Code”"}
             </div>
           )}
+          {state.pairing && (
+            <p className="text-sm">
+              <span className="text-muted-foreground">Código de pareamento: </span>
+              <span className="font-mono font-bold tracking-widest">{state.pairing}</span>
+            </p>
+          )}
           {state.status === "conectado" && (
             <p className="text-sm text-[var(--signal)]">🟢 Conectado</p>
+          )}
+          {state.qr && (
+            <p className="text-xs text-muted-foreground">
+              O QR Code expira em ~40s. Se não funcionar, clique em “Gerar QR Code” novamente.
+            </p>
           )}
         </div>
         <DialogFooter>
