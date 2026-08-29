@@ -524,3 +524,73 @@ export async function runStageAutomations(leadId: string, stageId: string, userI
   }
   return { sent };
 }
+
+export async function profileIdFor(authUserId?: string | null): Promise<string | null> {
+  if (!authUserId) return null;
+  const { data } = await db
+    .from("profiles")
+    .select("id")
+    .eq("auth_user_id", authUserId)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
+export async function createConnection(input: {
+  name: string;
+  instanceName: string;
+  baseUrl: string;
+  apiKey: string;
+  responsibleUserId?: string | null;
+  autoCreateLead?: boolean;
+}) {
+  const { data, error } = await db
+    .from("whatsapp_connections")
+    .insert({
+      name: input.name,
+      instance_name: input.instanceName,
+      provider: "evolution",
+      responsible_user_id: input.responsibleUserId ?? null,
+      auto_create_lead: input.autoCreateLead ?? true,
+      status: "desconectado",
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  const { error: secretError } = await db
+    .from("whatsapp_connection_secrets")
+    .insert({
+      connection_id: data.id,
+      base_url: input.baseUrl.replace(/\/+$/, ""),
+      api_key: input.apiKey,
+    });
+  if (secretError) {
+    await db.from("whatsapp_connections").delete().eq("id", data.id);
+    throw new Error(secretError.message);
+  }
+  return data;
+}
+
+export async function updateCredentials(connectionId: string, patch: { baseUrl?: string; apiKey?: string }) {
+  const values: Record<string, unknown> = {};
+  if (patch.baseUrl) values["base_url"] = patch.baseUrl.replace(/\/+$/, "");
+  if (patch.apiKey) values["api_key"] = patch.apiKey;
+  if (!Object.keys(values).length) return;
+  const { error } = await db
+    .from("whatsapp_connection_secrets")
+    .update(values)
+    .eq("connection_id", connectionId);
+  if (error) throw new Error(error.message);
+}
+
+export async function webhookInfo(connectionId: string, origin: string) {
+  const conn = await getConnection(connectionId);
+  const creds = await getCredentials(conn);
+  return { url: webhookUrlFor(origin, creds.webhookToken) };
+}
+
+export async function refreshWebhook(connectionId: string, origin: string) {
+  const conn = await getConnection(connectionId);
+  const creds = await getCredentials(conn);
+  await getProvider(conn["provider"]).setWebhook(creds, webhookUrlFor(origin, creds.webhookToken));
+  return { url: webhookUrlFor(origin, creds.webhookToken) };
+}
