@@ -1,0 +1,201 @@
+{
+  "version": 1,
+  "sdk_version": "0.28.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://ybyzkpwwgmjzyylkwwlq.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "sales-navigator-pro",
+      "version": "0.1.0",
+      "title": "Sales Navigator Pro"
+    },
+    "tools": [
+      {
+        "name": "list_leads",
+        "title": "Listar leads",
+        "description": "Lista leads do CRM Glodeu, com filtro opcional por status, temperatura ou busca textual.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "search": {
+              "description": "Texto para buscar no nome ou empresa do lead.",
+              "type": "string",
+              "minLength": 1
+            },
+            "status": {
+              "description": "Filtra por status do lead (ex.: aberto, ganho, perdido).",
+              "type": "string",
+              "minLength": 1
+            },
+            "limit": {
+              "default": 20,
+              "description": "Quantidade máxima de leads retornados.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_lead",
+        "title": "Criar lead",
+        "description": "Cria um novo lead no CRM Glodeu.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "first_name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Nome do contato principal."
+            },
+            "last_name": {
+              "description": "Sobrenome do contato.",
+              "type": "string"
+            },
+            "company_name": {
+              "description": "Empresa do lead.",
+              "type": "string"
+            },
+            "email": {
+              "description": "E-mail de contato.",
+              "type": "string",
+              "format": "email",
+              "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+            },
+            "phone": {
+              "description": "Telefone ou WhatsApp.",
+              "type": "string"
+            },
+            "source": {
+              "description": "Origem do lead (ex.: indicação, inbound).",
+              "type": "string"
+            },
+            "potential_value": {
+              "description": "Valor potencial estimado em BRL.",
+              "type": "number",
+              "minimum": 0
+            },
+            "notes": {
+              "description": "Observações iniciais.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "first_name"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_tasks",
+        "title": "Listar tarefas",
+        "description": "Lista tarefas do CRM ordenadas por vencimento, com filtro opcional por status.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "status": {
+              "description": "Filtra por status da tarefa (ex.: pendente, concluida).",
+              "type": "string",
+              "minLength": 1
+            },
+            "limit": {
+              "default": 20,
+              "description": "Quantidade máxima de tarefas retornadas.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_task",
+        "title": "Criar tarefa",
+        "description": "Cria uma tarefa de follow-up no CRM, opcionalmente vinculada a um lead.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Título da tarefa."
+            },
+            "due_at": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Data/hora de vencimento em ISO 8601."
+            },
+            "description": {
+              "description": "Detalhes da tarefa.",
+              "type": "string"
+            },
+            "type": {
+              "description": "Tipo da tarefa (ex.: ligacao, email, reuniao).",
+              "type": "string"
+            },
+            "lead_id": {
+              "description": "ID do lead relacionado.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          "required": [
+            "title",
+            "due_at"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "pipeline_summary",
+        "title": "Resumo do pipeline",
+        "description": "Resume as negociações do funil: total aberto, ganho, perdido e valores em BRL.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
