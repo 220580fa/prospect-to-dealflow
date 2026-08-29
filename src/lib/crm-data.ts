@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+// Untyped surface: the CRM builds dynamic queries across many tables.
+const db = supabase as any;
+
 export type Row = Record<string, any>;
 
 const list = (table: string, build?: (q: any) => any) => async () => {
-  let q: any = supabase.from(table).select("*");
+  let q: any = db.from(table).select("*");
   if (build) q = build(q);
   const { data, error } = await q;
   if (error) throw error;
@@ -39,7 +42,7 @@ export const useActivities = (leadId?: string) =>
   useQuery({
     queryKey: ["activities", leadId ?? "all"],
     queryFn: async () => {
-      let q: any = supabase.from("activities").select("*").order("occurred_at", { ascending: false });
+      let q: any = db.from("activities").select("*").order("occurred_at", { ascending: false });
       if (leadId) q = q.eq("lead_id", leadId);
       else q = q.limit(120);
       const { data, error } = await q;
@@ -65,14 +68,14 @@ export const useCurrentProfile = () =>
         .from("profiles")
         .insert({
           auth_user_id: user.id,
-          name: (user.user_metadata?.name as string) ?? user.email?.split("@")[0] ?? "Usuário",
+          name: (user.user_metadata?.['name'] as string) ?? user.email?.split("@")[0] ?? "Usuário",
           email: user.email,
           job_title: "Administrador",
         })
         .select()
         .single();
       if (error) throw error;
-      await supabase.from("user_roles").insert({ user_id: user.id, role: "administrador" });
+      await db.from("user_roles").insert({ user_id: user.id, role: "administrador" });
       return created as Row;
     },
   });
@@ -81,7 +84,7 @@ export const useRoles = () =>
   useQuery({
     queryKey: ["user_roles"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("user_roles").select("*");
+      const { data, error } = await db.from("user_roles").select("*");
       if (error) throw error;
       return (data ?? []) as Row[];
     },
@@ -104,22 +107,22 @@ export function useCrmMutation<TVars>(
 }
 
 export async function logActivity(entry: Row) {
-  await supabase.from("activities").insert(entry);
+  await db.from("activities").insert(entry);
 }
 
 export async function insertRow(table: string, values: Row) {
-  const { data, error } = await supabase.from(table).insert(values).select().single();
+  const { data, error } = await db.from(table).insert(values).select().single();
   if (error) throw error;
   return data as Row;
 }
 
 export async function updateRow(table: string, id: string, values: Row) {
-  const { data, error } = await supabase.from(table).update(values).eq("id", id).select().single();
+  const { data, error } = await db.from(table).update(values).eq("id", id).select().single();
   if (error) throw error;
   return data as Row;
 }
 
 export async function deleteRow(table: string, id: string) {
-  const { error } = await supabase.from(table).delete().eq("id", id);
+  const { error } = await db.from(table).delete().eq("id", id);
   if (error) throw error;
 }
