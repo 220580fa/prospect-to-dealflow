@@ -149,7 +149,13 @@ export const Route = createFileRoute("/api/public/lead-capture")({
         const firstName = parts[0] || d.company_name || d.email || "Contato";
         const lastName = d.last_name ?? (parts.length > 1 ? parts.slice(1).join(" ") : null);
 
-        const notes = [d.message, d.notes].filter(Boolean).join("\n\n") || null;
+        // preserva campos não mapeados (desafio, volume_mensal, tipo_negocio...) nas observações
+        const KNOWN = new Set([...Object.values(ALIASES), "_hp", "consentimento"]);
+        const extras = Object.entries(normalize(raw))
+          .filter(([k]) => !KNOWN.has(k) && !(k in d))
+          .map(([k, v]) => `${k}: ${String(v).slice(0, 500)}`);
+        const notes =
+          [d.message, d.notes, ...extras].filter(Boolean).join("\n\n") || null;
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const db = supabaseAdmin as any;
