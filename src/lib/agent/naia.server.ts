@@ -10,6 +10,7 @@ type AgentRequest = {
   leadId?: string | null;
   conversationId?: string | null;
   userId?: string | null;
+  agent?: "naia" | "davi";
 };
 
 type AgentResult = {
@@ -101,7 +102,12 @@ async function buildContext(input: AgentRequest) {
   };
 }
 
-function fallbackResponse(mode: AgentMode, ctx: Awaited<ReturnType<typeof buildContext>>) {
+function fallbackResponse(
+  mode: AgentMode,
+  ctx: Awaited<ReturnType<typeof buildContext>>,
+  agent: "naia" | "davi",
+) {
+  const agentName = agent === "davi" ? "Davi" : "Naia";
   const name = leadFullName(ctx.lead) || ctx.conversation?.contact_name || "esse lead";
   const first = String(name).split(" ")[0] || "Olá";
   const company = ctx.lead?.company_name ? ` da ${ctx.lead.company_name}` : "";
@@ -114,8 +120,7 @@ function fallbackResponse(mode: AgentMode, ctx: Awaited<ReturnType<typeof buildC
       ? `Olá, ${first}. Perfeito, obrigado pelo retorno. Para eu te ajudar melhor, me conta rapidamente qual é hoje o principal ponto que mais atrapalha o processo comercial${company}: falta de follow-up, controle dos leads, previsibilidade ou integração entre canais?`
       : `Olá, ${first}. Tudo bem por aí? Queria entender melhor o momento comercial${company} para identificar onde vocês podem estar perdendo oportunidades e qual seria o próximo passo mais simples.`;
     return {
-      summary:
-        "Sugestão gerada localmente porque o endpoint da Naia/Davi ainda não foi configurado.",
+      summary: `Sugestão gerada localmente porque o endpoint da ${agentName} ainda não foi configurado.`,
       suggestedMessage: message,
       nextAction: { type: "follow_up", label: "Validar dor comercial do lead" },
       raw: { fallback: true },
@@ -124,8 +129,7 @@ function fallbackResponse(mode: AgentMode, ctx: Awaited<ReturnType<typeof buildC
 
   if (mode === "execute_next_action") {
     return {
-      summary:
-        "Próxima ação sugerida localmente. Configure o endpoint da Naia/Davi para execução inteligente completa.",
+      summary: `Próxima ação sugerida localmente. Configure o endpoint da ${agentName} para execução inteligente completa.`,
       suggestedMessage: null,
       nextAction: { type: "task", title: "Fazer follow-up consultivo", priority: "media" },
       raw: { fallback: true },
@@ -143,6 +147,7 @@ function fallbackResponse(mode: AgentMode, ctx: Awaited<ReturnType<typeof buildC
 async function callConfiguredAgent(
   mode: AgentMode,
   context: Awaited<ReturnType<typeof buildContext>>,
+  agent: "naia" | "davi",
 ) {
   const endpoint = process.env["NAIA_AGENT_WEBHOOK_URL"];
   if (!endpoint) return null;
@@ -158,7 +163,7 @@ async function callConfiguredAgent(
     method: "POST",
     headers,
     body: JSON.stringify({
-      agent: "naia",
+      agent,
       mode,
       channel: "crm_lovable",
       lead_data: context.lead,
@@ -216,6 +221,7 @@ async function maybeCreateTask(
 export async function requestNaiaAction(input: AgentRequest): Promise<AgentResult> {
   const ctx = await buildContext(input);
   const actorId = await getProfileId(input.userId);
+  const agent = input.agent ?? "naia";
   const latestMessage = [...ctx.messages].reverse()[0] ?? null;
   const requestPayload = {
     mode: input.mode,
@@ -229,17 +235,17 @@ export async function requestNaiaAction(input: AgentRequest): Promise<AgentResul
   let usedFallback = false;
 
   try {
-    const agentResponse = await callConfiguredAgent(input.mode, ctx);
+    const agentResponse = await callConfiguredAgent(input.mode, ctx, agent);
     if (agentResponse) {
       normalized = agentResponse;
       responsePayload = agentResponse.raw;
     } else {
-      normalized = fallbackResponse(input.mode, ctx);
+      normalized = fallbackResponse(input.mode, ctx, agent);
       responsePayload = normalized.raw;
       usedFallback = true;
     }
   } catch (error) {
-    normalized = fallbackResponse(input.mode, ctx);
+    normalized = fallbackResponse(input.mode, ctx, agent);
     responsePayload = {
       fallback: true,
       error: error instanceof Error ? error.message : "Falha ao chamar endpoint da Naia",
@@ -254,7 +260,7 @@ export async function requestNaiaAction(input: AgentRequest): Promise<AgentResul
       conversation_id: ctx.conversation?.id ?? null,
       message_id: latestMessage?.id ?? null,
       actor_id: actorId,
-      agent: "naia",
+      agent,
       mode: input.mode,
       status: input.mode === "execute_next_action" ? "executed" : "suggested",
       summary: normalized.summary,
@@ -276,7 +282,10 @@ export async function requestNaiaAction(input: AgentRequest): Promise<AgentResul
       actor_id: actorId,
       type: "ia_naia",
       channel: "crm",
-      title: input.mode === "suggest_reply" ? "Naia sugeriu resposta" : "Naia analisou o lead",
+      title:
+        input.mode === "suggest_reply"
+          ? `${agent === "davi" ? "Davi" : "Naia"} sugeriu resposta`
+          : `${agent === "davi" ? "Davi" : "Naia"} analisou o lead`,
       description: normalized.summary,
       metadata: { ai_action_id: data.id, mode: input.mode, used_fallback: usedFallback },
     });

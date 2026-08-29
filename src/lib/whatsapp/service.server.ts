@@ -39,7 +39,9 @@ export async function getConnection(connectionId: string): Promise<ConnectionRow
   return data;
 }
 
-export async function getCredentials(connection: ConnectionRow): Promise<ProviderCredentials & { webhookToken: string }> {
+export async function getCredentials(
+  connection: ConnectionRow,
+): Promise<ProviderCredentials & { webhookToken: string }> {
   const { data, error } = await db
     .from("whatsapp_connection_secrets")
     .select("*")
@@ -227,7 +229,11 @@ export async function createConversation(params: {
   return data;
 }
 
-export async function resolveConversation(connection: ConnectionRow, phone: string, pushName: string | null) {
+export async function resolveConversation(
+  connection: ConnectionRow,
+  phone: string,
+  pushName: string | null,
+) {
   let lead = await findLeadByPhone(phone);
   if (!lead && connection["auto_create_lead"]) {
     lead = await createLeadFromWhatsApp(phone, pushName, connection);
@@ -245,11 +251,7 @@ export async function resolveConversation(connection: ConnectionRow, phone: stri
 // ---------- mensagens ----------
 
 export async function saveMessage(msg: Record<string, any>) {
-  const { data, error } = await db
-    .from("whatsapp_messages")
-    .insert(msg)
-    .select()
-    .maybeSingle();
+  const { data, error } = await db.from("whatsapp_messages").insert(msg).select().maybeSingle();
   if (error) {
     if (String(error.code) === "23505") return null; // duplicada (webhook reenviado)
     throw new Error(error.message);
@@ -307,7 +309,8 @@ export async function sendWhatsAppMessage(params: {
     conversation = data;
   }
 
-  const connectionId = params.connectionId ?? conversation?.connection_id ?? (await defaultConnectionId());
+  const connectionId =
+    params.connectionId ?? conversation?.connection_id ?? (await defaultConnectionId());
   if (!connectionId) throw new Error("Nenhuma conexão de WhatsApp configurada");
   const connection = await getConnection(connectionId);
   if (connection["status"] !== "conectado") {
@@ -358,7 +361,13 @@ export async function sendWhatsAppMessage(params: {
 
   try {
     const result = params.mediaUrl
-      ? await provider.sendMedia(creds, phone, params.mediaUrl, params.messageType ?? "document", params.message)
+      ? await provider.sendMedia(
+          creds,
+          phone,
+          params.mediaUrl,
+          params.messageType ?? "document",
+          params.message,
+        )
       : await provider.sendText(creds, phone, params.message);
     const saved = await saveMessage({
       ...base,
@@ -391,10 +400,18 @@ function extractContent(data: any): { type: string; body: string | null; mediaUr
   if (m.extendedTextMessage?.text)
     return { type: "text", body: m.extendedTextMessage.text, mediaUrl: null };
   if (m.imageMessage)
-    return { type: "image", body: m.imageMessage.caption ?? "[imagem]", mediaUrl: data?.mediaUrl ?? null };
+    return {
+      type: "image",
+      body: m.imageMessage.caption ?? "[imagem]",
+      mediaUrl: data?.mediaUrl ?? null,
+    };
   if (m.audioMessage) return { type: "audio", body: "[áudio]", mediaUrl: data?.mediaUrl ?? null };
   if (m.videoMessage)
-    return { type: "video", body: m.videoMessage.caption ?? "[vídeo]", mediaUrl: data?.mediaUrl ?? null };
+    return {
+      type: "video",
+      body: m.videoMessage.caption ?? "[vídeo]",
+      mediaUrl: data?.mediaUrl ?? null,
+    };
   if (m.documentMessage)
     return {
       type: "document",
@@ -424,12 +441,15 @@ export async function processWebhook(token: string, payload: any) {
   if (!secret) return { ok: false, reason: "token inválido" as const };
 
   const connection = await getConnection(secret.connection_id);
-  const event = String(payload?.event ?? "").toLowerCase().replace(/_/g, ".");
+  const event = String(payload?.event ?? "")
+    .toLowerCase()
+    .replace(/_/g, ".");
   const data = payload?.data ?? {};
 
   if (event === "connection.update") {
     const state = data?.state ?? data?.connection;
-    const status = state === "open" ? "conectado" : state === "close" ? "desconectado" : "conectando";
+    const status =
+      state === "open" ? "conectado" : state === "close" ? "desconectado" : "conectando";
     await setStatus(connection["id"], {
       status,
       ...(data?.wuid || data?.owner
@@ -455,7 +475,8 @@ export async function processWebhook(token: string, payload: any) {
     return { ok: true, event };
   }
 
-  if (event !== "messages.upsert" && event !== "send.message") return { ok: true, event, skipped: true };
+  if (event !== "messages.upsert" && event !== "send.message")
+    return { ok: true, event, skipped: true };
 
   const items = Array.isArray(data) ? data : [data];
   for (const item of items) {
@@ -475,7 +496,7 @@ export async function processWebhook(token: string, payload: any) {
       fromMe ? null : (item?.pushName ?? null),
     );
 
-    await saveMessage({
+    const saved = await saveMessage({
       conversation_id: conversation.id,
       lead_id: lead?.id ?? conversation.lead_id ?? null,
       connection_id: connection["id"],
@@ -489,8 +510,44 @@ export async function processWebhook(token: string, payload: any) {
       recipient_phone: fromMe ? phone : (connection["phone_number"] ?? null),
       ...(fromMe ? { sent_at: ts } : { received_at: ts }),
     });
+
+    if (saved && !fromMe && connection["auto_reply_enabled"]) {
+      await runDaviAutoReply({
+        connectionId: connection["id"],
+        conversationId: conversation.id,
+        leadId: lead?.id ?? conversation.lead_id ?? null,
+      });
+    }
   }
   return { ok: true, event };
+}
+
+async function runDaviAutoReply(params: {
+  connectionId: string;
+  conversationId: string;
+  leadId?: string | null | undefined;
+}) {
+  try {
+    const { requestNaiaAction } = await import("@/lib/agent/naia.server");
+    const result = await requestNaiaAction({
+      mode: "suggest_reply",
+      leadId: params.leadId ?? null,
+      conversationId: params.conversationId,
+      userId: null,
+      agent: "davi",
+    });
+    const message = result.suggestedMessage?.trim();
+    if (!message) return;
+    await sendWhatsAppMessage({
+      connectionId: params.connectionId,
+      conversationId: params.conversationId,
+      leadId: params.leadId ?? null,
+      message,
+      userId: null,
+    });
+  } catch (error) {
+    console.error("[whatsapp] Davi auto-reply falhou", error);
+  }
 }
 
 // ---------- automações ----------
@@ -569,13 +626,11 @@ export async function createConnection(input: {
     .select()
     .single();
   if (error) throw new Error(error.message);
-  const { error: secretError } = await db
-    .from("whatsapp_connection_secrets")
-    .insert({
-      connection_id: data.id,
-      base_url: normalizeEvolutionBaseUrl(input.baseUrl),
-      api_key: input.apiKey,
-    });
+  const { error: secretError } = await db.from("whatsapp_connection_secrets").insert({
+    connection_id: data.id,
+    base_url: normalizeEvolutionBaseUrl(input.baseUrl),
+    api_key: input.apiKey,
+  });
   if (secretError) {
     await db.from("whatsapp_connections").delete().eq("id", data.id);
     throw new Error(secretError.message);
@@ -583,7 +638,10 @@ export async function createConnection(input: {
   return data;
 }
 
-export async function updateCredentials(connectionId: string, patch: { baseUrl?: string | undefined; apiKey?: string | undefined }) {
+export async function updateCredentials(
+  connectionId: string,
+  patch: { baseUrl?: string | undefined; apiKey?: string | undefined },
+) {
   const values: Record<string, unknown> = {};
   if (patch.baseUrl) values["base_url"] = normalizeEvolutionBaseUrl(patch.baseUrl);
   if (patch.apiKey) values["api_key"] = patch.apiKey;
