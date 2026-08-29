@@ -43,14 +43,24 @@ export interface WhatsAppProvider {
   ): Promise<SendResult>;
 }
 
-const trim = (url: string) => url.replace(/\/+$/, "");
+function apiBaseUrl(url: string) {
+  const parsed = new URL(url.trim());
+  // Usuários frequentemente copiam a URL aberta no Evolution Manager.
+  // O painel vive em /manager, mas os endpoints REST ficam na raiz.
+  parsed.pathname = parsed.pathname
+    .replace(/\/(manager|dashboard)(\/.*)?$/i, "")
+    .replace(/\/+$/, "");
+  parsed.search = "";
+  parsed.hash = "";
+  return parsed.toString().replace(/\/$/, "");
+}
 
 async function call(
   c: ProviderCredentials,
   path: string,
   init: { method?: string; body?: unknown } = {},
 ): Promise<{ ok: boolean; status: number; data: any }> {
-  const res = await fetch(`${trim(c.baseUrl)}${path}`, {
+  const res = await fetch(`${apiBaseUrl(c.baseUrl)}${path}`, {
     method: init.method ?? "GET",
     headers: {
       "Content-Type": "application/json",
@@ -77,7 +87,7 @@ function mapState(state?: string | null): StatusResult["status"] {
 function errorMessage(data: any, fallback: string) {
   if (!data) return fallback;
   if (typeof data === "string") return data.slice(0, 300);
-  const m = data.message ?? data.error ?? data.response?.message;
+  const m = data.message ?? data.error ?? data.response?.message ?? data.response?.data?.message;
   if (!m) return fallback;
   return (Array.isArray(m) ? m.join(", ") : String(m)).slice(0, 300);
 }
@@ -97,7 +107,11 @@ export const EvolutionProvider: WhatsAppProvider = {
       integration: "WHATSAPP-BAILEYS",
     };
     const res = await call(c, "/instance/create", { method: "POST", body });
-    if (!res.ok) throw new Error(errorMessage(res.data, "Falha ao criar a instância na Evolution API"));
+    if (!res.ok) {
+      throw new Error(
+        `Evolution API (${res.status}): ${errorMessage(res.data, "falha ao criar a instância")}`,
+      );
+    }
     await EvolutionProvider.setWebhook(c, webhookUrl);
   },
 
@@ -170,7 +184,11 @@ export const EvolutionProvider: WhatsAppProvider = {
       await new Promise((r) => setTimeout(r, 1200));
     }
 
-    if (last && !last.ok) throw new Error(errorMessage(last.data, "Falha ao obter o QR Code"));
+    if (last && !last.ok) {
+      throw new Error(
+        `Evolution API (${last.status}): ${errorMessage(last.data, "falha ao obter o QR Code")}`,
+      );
+    }
     throw new Error(
       "A Evolution API não retornou o QR Code. Verifique se a instância existe e está no estado 'close', e tente novamente.",
     );
