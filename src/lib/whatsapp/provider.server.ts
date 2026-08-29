@@ -43,27 +43,54 @@ export interface WhatsAppProvider {
   ): Promise<SendResult>;
 }
 
-const trim = (url: string) => url.replace(/\/+$/, "");
+function apiBaseUrl(url: string) {
+  const parsed = new URL(url.trim());
+  // Usuários frequentemente copiam a URL aberta no Evolution Manager.
+  // O painel vive em /manager, mas os endpoints REST ficam na raiz.
+  parsed.pathname = parsed.pathname
+    .replace(/\/(manager|dashboard)(\/.*)?$/i, "")
+    .replace(/\/+$/, "");
+  parsed.search = "";
+  parsed.hash = "";
+  return parsed.toString().replace(/\/$/, "");
+}
 
 async function call(
   c: ProviderCredentials,
   path: string,
   init: { method?: string; body?: unknown } = {},
 ): Promise<{ ok: boolean; status: number; data: any }> {
-  const res = await fetch(`${trim(c.baseUrl)}${path}`, {
-    method: init.method ?? "GET",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: c.apiKey,
-    },
-    ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
-  });
+  const endpoint = `${apiBaseUrl(c.baseUrl)}${path}`;
+  let res: Response;
+  try {
+    res = await fetch(endpoint, {
+      method: init.method ?? "GET",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        apikey: c.apiKey,
+      },
+      ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "falha de rede";
+    throw new Error(`Não foi possível acessar a Evolution API: ${detail}`);
+  }
   const text = await res.text();
   let data: any = null;
   try {
     data = text ? JSON.parse(text) : null;
   } catch {
     data = text;
+  }
+  const contentType = res.headers.get("content-type") ?? "";
+  if (res.ok && text && !contentType.toLowerCase().includes("application/json")) {
+    return {
+      ok: false,
+      status: 502,
+      data: { message: "A URL informada aponta para o painel web, não para a raiz da Evolution API." },
+    };
   }
   return { ok: res.ok, status: res.status, data };
 }
@@ -77,7 +104,7 @@ function mapState(state?: string | null): StatusResult["status"] {
 function errorMessage(data: any, fallback: string) {
   if (!data) return fallback;
   if (typeof data === "string") return data.slice(0, 300);
-  const m = data.message ?? data.error ?? data.response?.message;
+  const m = data.message ?? data.error ?? data.response?.message ?? data.response?.data?.message;
   if (!m) return fallback;
   return (Array.isArray(m) ? m.join(", ") : String(m)).slice(0, 300);
 }
@@ -97,7 +124,11 @@ export const EvolutionProvider: WhatsAppProvider = {
       integration: "WHATSAPP-BAILEYS",
     };
     const res = await call(c, "/instance/create", { method: "POST", body });
-    if (!res.ok) throw new Error(errorMessage(res.data, "Falha ao criar a instância na Evolution API"));
+    if (!res.ok) {
+      throw new Error(
+        `Evolution API (${res.status}): ${errorMessage(res.data, "falha ao criar a instância")}`,
+      );
+    }
     await EvolutionProvider.setWebhook(c, webhookUrl);
   },
 
@@ -170,7 +201,11 @@ export const EvolutionProvider: WhatsAppProvider = {
       await new Promise((r) => setTimeout(r, 1200));
     }
 
-    if (last && !last.ok) throw new Error(errorMessage(last.data, "Falha ao obter o QR Code"));
+    if (last && !last.ok) {
+      throw new Error(
+        `Evolution API (${last.status}): ${errorMessage(last.data, "falha ao obter o QR Code")}`,
+      );
+    }
     throw new Error(
       "A Evolution API não retornou o QR Code. Verifique se a instância existe e está no estado 'close', e tente novamente.",
     );

@@ -6,6 +6,16 @@ import { normalizePhone, phoneVariants, renderTemplate } from "./shared";
 
 const db = supabaseAdmin as any;
 
+function normalizeEvolutionBaseUrl(url: string) {
+  const parsed = new URL(url.trim());
+  parsed.pathname = parsed.pathname
+    .replace(/\/(manager|dashboard)(\/.*)?$/i, "")
+    .replace(/\/+$/, "");
+  parsed.search = "";
+  parsed.hash = "";
+  return parsed.toString().replace(/\/$/, "");
+}
+
 export const PROSPECT_FUNNEL_ID = "11111111-1111-4111-8111-111111111111";
 export const TRIAGEM_STAGE_ID = "f907367c-87e5-44ef-bbea-1ae48194d2f1";
 
@@ -560,7 +570,7 @@ export async function createConnection(input: {
     .from("whatsapp_connection_secrets")
     .insert({
       connection_id: data.id,
-      base_url: input.baseUrl.replace(/\/+$/, ""),
+      base_url: normalizeEvolutionBaseUrl(input.baseUrl),
       api_key: input.apiKey,
     });
   if (secretError) {
@@ -572,7 +582,7 @@ export async function createConnection(input: {
 
 export async function updateCredentials(connectionId: string, patch: { baseUrl?: string | undefined; apiKey?: string | undefined }) {
   const values: Record<string, unknown> = {};
-  if (patch.baseUrl) values["base_url"] = patch.baseUrl.replace(/\/+$/, "");
+  if (patch.baseUrl) values["base_url"] = normalizeEvolutionBaseUrl(patch.baseUrl);
   if (patch.apiKey) values["api_key"] = patch.apiKey;
   if (!Object.keys(values).length) return;
   const { error } = await db
