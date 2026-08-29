@@ -60,20 +60,37 @@ async function call(
   path: string,
   init: { method?: string; body?: unknown } = {},
 ): Promise<{ ok: boolean; status: number; data: any }> {
-  const res = await fetch(`${apiBaseUrl(c.baseUrl)}${path}`, {
-    method: init.method ?? "GET",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: c.apiKey,
-    },
-    ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
-  });
+  const endpoint = `${apiBaseUrl(c.baseUrl)}${path}`;
+  let res: Response;
+  try {
+    res = await fetch(endpoint, {
+      method: init.method ?? "GET",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        apikey: c.apiKey,
+      },
+      ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "falha de rede";
+    throw new Error(`Não foi possível acessar a Evolution API: ${detail}`);
+  }
   const text = await res.text();
   let data: any = null;
   try {
     data = text ? JSON.parse(text) : null;
   } catch {
     data = text;
+  }
+  const contentType = res.headers.get("content-type") ?? "";
+  if (res.ok && text && !contentType.toLowerCase().includes("application/json")) {
+    return {
+      ok: false,
+      status: 502,
+      data: { message: "A URL informada aponta para o painel web, não para a raiz da Evolution API." },
+    };
   }
   return { ok: res.ok, status: res.status, data };
 }
