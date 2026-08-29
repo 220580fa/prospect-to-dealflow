@@ -191,6 +191,17 @@ export const Route = createFileRoute("/api/public/lead-capture")({
           occurred_at: new Date().toISOString(),
         });
 
+        if (wantsHtml) {
+          const back = request.headers.get("referer");
+          return new Response(null, {
+            status: 303,
+            headers: {
+              ...corsHeaders,
+              Location: back ? `${back.split("?")[0]}?lead=ok` : "https://glodeu.com.br/?lead=ok",
+            },
+          });
+        }
+
         return json({ ok: true, lead_id: lead.id }, 201);
       },
     },
