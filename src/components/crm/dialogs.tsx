@@ -78,7 +78,10 @@ export function LeadDialog({
   );
 
   const save = async () => {
-    if (!form["first_name"]) return toast.error("Informe o nome do lead.");
+    if (!form["first_name"]) {
+      toast.error("Informe o nome do lead.");
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -229,7 +232,10 @@ export function TaskDialog({
   const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
 
   const save = async () => {
-    if (!form["title"]) return toast.error("Informe o título da tarefa.");
+    if (!form["title"]) {
+      toast.error("Informe o título da tarefa.");
+      return;
+    }
     const payload = {
       title: form["title"],
       type: form["type"],
@@ -742,7 +748,10 @@ export function LossDialog({
   const [notes, setNotes] = useState("");
 
   const save = async () => {
-    if (!rowId || !reason) return toast.error("Selecione o motivo da perda.");
+    if (!rowId || !reason) {
+      toast.error("Selecione o motivo da perda.");
+      return;
+    }
     await updateRow(table, rowId, {
       status: "perdido",
       loss_reason_id: reason,
@@ -816,13 +825,13 @@ export function Pick({
   options,
   placeholder = "Selecionar",
 }: {
-  value?: string | null;
+  value?: string | null | undefined;
   onChange: (v: string) => void;
   options: { value: string; label: string }[];
   placeholder?: string;
 }) {
   return (
-    <Select value={value ?? undefined} onValueChange={onChange}>
+    <Select {...(value ? { value } : {})} onValueChange={onChange}>
       <SelectTrigger>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
