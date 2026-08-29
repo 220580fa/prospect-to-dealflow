@@ -52,6 +52,11 @@ function apiBaseUrl(url: string) {
     .replace(/\/+$/, "");
   parsed.search = "";
   parsed.hash = "";
+  // O runtime publicado bloqueia fetch para IPv4 literal (Cloudflare 1003).
+  // sslip.io resolve o hostname de volta para o mesmo IP, sem alterar o servidor.
+  if (/^(?:\d{1,3}\.){3}\d{1,3}$/.test(parsed.hostname)) {
+    parsed.hostname = `${parsed.hostname.replaceAll(".", "-")}.sslip.io`;
+  }
   return parsed.toString().replace(/\/$/, "");
 }
 
@@ -109,6 +114,14 @@ function errorMessage(data: any, fallback: string) {
   return (Array.isArray(m) ? m.join(", ") : String(m)).slice(0, 300);
 }
 
+function providerError(status: number, data: any, fallback: string) {
+  const message = errorMessage(data, fallback);
+  if (status === 403 && /(?:error\s*)?1003|direct ip access not allowed/i.test(message)) {
+    return "A hospedagem bloqueou o acesso direto ao IP da Evolution API. Use um domínio apontado para a VPS ou salve novamente a conexão para aplicar a correção automática.";
+  }
+  return message;
+}
+
 export const EvolutionProvider: WhatsAppProvider = {
   id: "evolution",
 
@@ -126,7 +139,7 @@ export const EvolutionProvider: WhatsAppProvider = {
     const res = await call(c, "/instance/create", { method: "POST", body });
     if (!res.ok) {
       throw new Error(
-        `Evolution API (${res.status}): ${errorMessage(res.data, "falha ao criar a instância")}`,
+        `Evolution API (${res.status}): ${providerError(res.status, res.data, "falha ao criar a instância")}`,
       );
     }
     await EvolutionProvider.setWebhook(c, webhookUrl);
@@ -203,7 +216,7 @@ export const EvolutionProvider: WhatsAppProvider = {
 
     if (last && !last.ok) {
       throw new Error(
-        `Evolution API (${last.status}): ${errorMessage(last.data, "falha ao obter o QR Code")}`,
+        `Evolution API (${last.status}): ${providerError(last.status, last.data, "falha ao obter o QR Code")}`,
       );
     }
     throw new Error(
