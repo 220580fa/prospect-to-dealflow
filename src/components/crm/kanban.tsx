@@ -10,7 +10,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { AlertTriangle, Clock, Flame, Sparkles } from "lucide-react";
+import { AlertTriangle, Clock, Flame, MessageCircle, Sparkles } from "lucide-react";
 import { brl, compact, daysSince } from "@/lib/crm";
 import { cn } from "@/lib/utils";
 import type { Row } from "@/lib/crm-data";
@@ -27,10 +27,19 @@ export type KanbanCard = {
   idleDays: number | null;
   hasOverdueTask?: boolean;
   isNew?: boolean;
+  unreadCount?: number;
   raw: Row;
 };
 
-function CardItem({ card, onOpen }: { card: KanbanCard; onOpen: (c: KanbanCard) => void }) {
+function CardItem({
+  card,
+  onOpen,
+  onWhatsApp,
+}: {
+  card: KanbanCard;
+  onOpen: (c: KanbanCard) => void;
+  onWhatsApp?: (c: KanbanCard) => void;
+}) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: card.id });
   const idle = card.idleDays ?? 0;
   const stale = idle >= 7;
@@ -85,6 +94,23 @@ function CardItem({ card, onOpen }: { card: KanbanCard; onOpen: (c: KanbanCard) 
         {typeof card.score === "number" && (
           <span className="label-mono">score {card.score}</span>
         )}
+        {onWhatsApp && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onWhatsApp(card);
+            }}
+            title="Abrir conversa de WhatsApp"
+            className="ml-auto inline-flex items-center gap-1 rounded-full bg-[var(--flow)]/15 px-2 py-0.5 text-[10px] text-[var(--flow)] transition-colors hover:bg-[var(--flow)]/25"
+          >
+            <MessageCircle className="h-3 w-3" /> WhatsApp
+            {!!card.unreadCount && (
+              <span className="ml-1 rounded-full bg-[var(--friction)] px-1.5 font-bold text-white">
+                {card.unreadCount}
+              </span>
+            )}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -94,10 +120,12 @@ function Column({
   stage,
   cards,
   onOpen,
+  onWhatsApp,
 }: {
   stage: Row;
   cards: KanbanCard[];
   onOpen: (c: KanbanCard) => void;
+  onWhatsApp?: (c: KanbanCard) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage["id"] });
   const total = cards.reduce((s, c) => s + c.value, 0);
@@ -121,7 +149,7 @@ function Column({
         )}
       >
         {cards.map((c) => (
-          <CardItem key={c.id} card={c} onOpen={onOpen} />
+          <CardItem key={c.id} card={c} onOpen={onOpen} onWhatsApp={onWhatsApp} />
         ))}
         {cards.length === 0 && (
           <p className="px-2 py-6 text-center text-xs text-muted-foreground">Sem cards</p>
@@ -136,11 +164,13 @@ export function KanbanBoard({
   cards,
   onOpen,
   onMove,
+  onWhatsApp,
 }: {
   stages: Row[];
   cards: KanbanCard[];
   onOpen: (c: KanbanCard) => void;
   onMove: (card: KanbanCard, stageId: string) => void;
+  onWhatsApp?: (c: KanbanCard) => void;
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
@@ -164,6 +194,7 @@ export function KanbanBoard({
             stage={s}
             cards={cards.filter((c) => c.stageId === s["id"])}
             onOpen={onOpen}
+            onWhatsApp={onWhatsApp}
           />
         ))}
       </div>

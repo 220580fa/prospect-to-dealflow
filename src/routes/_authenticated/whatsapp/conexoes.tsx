@@ -23,7 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Field, Pick } from "@/components/crm/dialogs";
-import { useProfiles, insertRow, updateRow, deleteRow, type Row } from "@/lib/crm-data";
+import { useProfiles, insertRow, updateRow, type Row } from "@/lib/crm-data";
 import { useQuickReplies, useWhatsAppConnections } from "@/lib/whatsapp-data";
 import { CONNECTION_STATUS_LABEL, TEMPLATE_VARIABLES, formatPhone } from "@/lib/whatsapp/shared";
 import {
@@ -522,5 +522,3 @@ function QuickReplies() {
     </section>
   );
 }
-
-export const _unused = deleteRow;
