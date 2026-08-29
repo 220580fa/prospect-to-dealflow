@@ -503,7 +503,7 @@ export async function runStageAutomations(leadId: string, stageId: string, userI
     if (condStage && condStage !== stageId) continue;
     const template = rule.action_config?.message;
     if (!template) continue;
-    const first = String(lead.first_name ?? "").split(" ")[0];
+    const first = String(lead.first_name ?? "").split(" ")[0] ?? "";
     const text = renderTemplate(template, {
       nome: [lead.first_name, lead.last_name].filter(Boolean).join(" "),
       primeiro_nome: first,
