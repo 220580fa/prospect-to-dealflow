@@ -457,7 +457,7 @@ export async function processWebhook(token: string, payload: any) {
         ? { phone_number: String(data.wuid ?? data.owner).split("@")[0] }
         : {}),
     });
-    return { ok: true, event };
+    return { ok: true, event, connectionId: connection["id"] };
   }
 
   if (event === "messages.update" || event === "message.update") {
@@ -473,13 +473,14 @@ export async function processWebhook(token: string, payload: any) {
           .eq("external_message_id", id);
       }
     }
-    return { ok: true, event };
+    return { ok: true, event, connectionId: connection["id"] };
   }
 
   if (event !== "messages.upsert" && event !== "send.message")
-    return { ok: true, event, skipped: true };
+    return { ok: true, event, connectionId: connection["id"], skipped: true };
 
   const items = Array.isArray(data) ? data : [data];
+  const processed: Array<Record<string, unknown>> = [];
   for (const item of items) {
     const remoteJid: string = item?.key?.remoteJid ?? "";
     if (!remoteJid || remoteJid.endsWith("@g.us") || remoteJid.includes("broadcast")) continue;
@@ -512,22 +513,24 @@ export async function processWebhook(token: string, payload: any) {
       ...(fromMe ? { sent_at: ts } : { received_at: ts }),
     });
 
-    if (saved && !fromMe && shouldRunDaviAutoReply(connection)) {
-      await runDaviAutoReply({
+    let autoReply: Record<string, unknown> | null = null;
+    if (saved && !fromMe) {
+      autoReply = await runDaviAutoReply({
         connectionId: connection["id"],
         conversationId: conversation.id,
         leadId: lead?.id ?? conversation.lead_id ?? null,
       });
     }
+    processed.push({
+      phone,
+      fromMe,
+      messageSaved: Boolean(saved),
+      conversationId: conversation.id,
+      leadId: lead?.id ?? conversation.lead_id ?? null,
+      autoReply,
+    });
   }
-  return { ok: true, event };
-}
-
-function shouldRunDaviAutoReply(connection: ConnectionRow) {
-  if (connection["auto_reply_enabled"] === true) return true;
-  const name = String(connection["name"] ?? "").toLowerCase();
-  const instanceName = String(connection["instance_name"] ?? "").toLowerCase();
-  return name.includes("fabiano") || instanceName.includes("fabiano");
+  return { ok: true, event, connectionId: connection["id"], processed };
 }
 
 async function runDaviAutoReply(params: {
@@ -545,8 +548,8 @@ async function runDaviAutoReply(params: {
       agent: "davi",
     });
     const message = result.suggestedMessage?.trim();
-    if (!message) return;
-    await sendWhatsAppMessage({
+    if (!message) return { ok: false, reason: "empty_suggested_message" };
+    const sendResult = await sendWhatsAppMessage({
       connectionId: params.connectionId,
       conversationId: params.conversationId,
       leadId: params.leadId ?? null,
@@ -554,8 +557,18 @@ async function runDaviAutoReply(params: {
       userId: null,
       allowStaleConnectionStatus: true,
     });
+    return {
+      ok: true,
+      actionId: result.actionId,
+      usedFallback: result.usedFallback,
+      conversationId: sendResult.conversationId,
+    };
   } catch (error) {
     console.error("[whatsapp] Davi auto-reply falhou", error);
+    return {
+      ok: false,
+      reason: error instanceof Error ? error.message : "Erro desconhecido",
+    };
   }
 }
 

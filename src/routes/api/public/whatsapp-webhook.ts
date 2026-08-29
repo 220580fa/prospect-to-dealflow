@@ -20,6 +20,7 @@ export const Route = createFileRoute("/api/public/whatsapp-webhook")({
       POST: async ({ request }) => {
         const url = new URL(request.url);
         const token = url.searchParams.get("token") ?? "";
+        const debug = url.searchParams.get("debug") === "1";
         if (!token || token.length < 16) return json({ error: "unauthorized" }, 401);
 
         let payload: any = null;
@@ -33,11 +34,19 @@ export const Route = createFileRoute("/api/public/whatsapp-webhook")({
           const { processWebhook } = await import("@/lib/whatsapp/service.server");
           const result = await processWebhook(token, payload);
           if (!result.ok) return json({ error: "unauthorized" }, 401);
-          return json({ received: true });
+          return json(debug ? { received: true, result } : { received: true });
         } catch (e) {
           console.error("[whatsapp-webhook]", e);
           // 200 evita reenvios infinitos da Evolution API
-          return json({ received: true, error: "processing_failed" });
+          return json(
+            debug
+              ? {
+                  received: true,
+                  error: "processing_failed",
+                  detail: e instanceof Error ? e.message : String(e),
+                }
+              : { received: true, error: "processing_failed" },
+          );
         }
       },
     },
