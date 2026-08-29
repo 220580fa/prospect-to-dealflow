@@ -58,13 +58,13 @@ export const useCurrentProfile = () =>
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
       if (!user) return null;
-      const { data: existing } = await supabase
+      const { data: existing } = await db
         .from("profiles")
         .select("*")
         .eq("auth_user_id", user.id)
         .maybeSingle();
       if (existing) return existing as Row;
-      const { data: created, error } = await supabase
+      const { data: created, error } = await db
         .from("profiles")
         .insert({
           auth_user_id: user.id,
