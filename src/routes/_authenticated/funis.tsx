@@ -92,12 +92,7 @@ function FunisPage() {
         score: isProspect ? (r["lead_score"] ?? null) : (r["probability"] ?? null),
         idleDays: idleDaysOf(r),
         hasOverdueTask: overdueByLead.has(isProspect ? r["id"] : r["lead_id"]),
-        isNew:
-          isProspect &&
-          Date.now() - new Date(r["created_at"]).getTime() < 1000 * 60 * 60 * 48 &&
-          !r["last_interaction_at"] === false
-            ? Date.now() - new Date(r["created_at"]).getTime() < 1000 * 60 * 60 * 48
-            : isProspect && Date.now() - new Date(r["created_at"]).getTime() < 1000 * 60 * 60 * 48,
+        isNew: Date.now() - new Date(r["created_at"]).getTime() < 1000 * 60 * 60 * 48,
         raw: r,
       }));
   }, [isProspect, leads, deals, funnel, ownerFilter, profiles, overdueByLead]);
