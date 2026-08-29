@@ -10,7 +10,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { AlertTriangle, Clock, Flame } from "lucide-react";
+import { AlertTriangle, Clock, Flame, Sparkles } from "lucide-react";
 import { brl, compact, daysSince } from "@/lib/crm";
 import { cn } from "@/lib/utils";
 import type { Row } from "@/lib/crm-data";
