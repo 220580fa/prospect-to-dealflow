@@ -352,22 +352,51 @@ function QrDialog({
 }) {
   const qr = useServerFn(getWhatsAppQrCode);
   const status = useServerFn(getWhatsAppStatus);
-  const [state, setState] = useState<{ qr?: string | null; status?: string; loading: boolean }>({
-    loading: false,
-  });
+  const [state, setState] = useState<{
+    qr?: string | null;
+    pairing?: string | null;
+    status?: string;
+    loading: boolean;
+  }>({ loading: false });
 
   const load = async () => {
     if (!connection) return;
     setState({ loading: true });
     try {
       const r: any = await qr({ data: { connectionId: connection["id"] } });
-      setState({ loading: false, qr: r.qrBase64, status: r.status });
+      setState({ loading: false, qr: r.qrBase64, pairing: r.pairingCode, status: r.status });
       if (r.status === "conectado") onDone();
     } catch (e) {
       setState({ loading: false });
       toast.error(e instanceof Error ? e.message : "Não foi possível obter o QR Code.");
     }
   };
+
+  // Gera o QR automaticamente ao abrir o diálogo
+  useEffect(() => {
+    if (connection) void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connection?.["id"]]);
+
+  // Enquanto o diálogo estiver aberto, confere o status a cada 5s
+  useEffect(() => {
+    if (!connection) return;
+    const t = setInterval(async () => {
+      try {
+        const r: any = await status({ data: { connectionId: connection["id"] } });
+        if (r.status === "conectado") {
+          setState((s) => ({ ...s, status: "conectado" }));
+          toast.success("WhatsApp conectado!");
+          onDone();
+          onOpenChange(false);
+        }
+      } catch {
+        /* silencioso */
+      }
+    }, 5000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connection?.["id"]]);
 
   const confirm = async () => {
     if (!connection) return;
