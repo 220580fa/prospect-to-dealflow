@@ -77,8 +77,10 @@ export const useQuickReplies = () =>
 export function useWhatsAppRealtime() {
   const qc = useQueryClient();
   useEffect(() => {
+    // Nome único por instância: dois componentes montados ao mesmo tempo não
+    // podem compartilhar o mesmo canal (o Supabase lança erro ao reusar).
     const channel = supabase
-      .channel("whatsapp-stream")
+      .channel(`whatsapp-stream-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "whatsapp_messages" }, () => {
         qc.invalidateQueries({ queryKey: ["whatsapp_messages"] });
         qc.invalidateQueries({ queryKey: ["whatsapp_conversations"] });
@@ -94,6 +96,7 @@ export function useWhatsAppRealtime() {
     };
   }, [qc]);
 }
+
 
 export async function markConversationRead(conversationId: string) {
   await db.from("whatsapp_conversations").update({ unread_count: 0 }).eq("id", conversationId);
