@@ -94,6 +94,95 @@ export type Database = {
           },
         ]
       }
+      ai_actions: {
+        Row: {
+          actor_id: string | null
+          agent: string
+          conversation_id: string | null
+          created_at: string
+          error_message: string | null
+          executed_at: string | null
+          id: string
+          lead_id: string | null
+          message_id: string | null
+          mode: string
+          next_action: Json | null
+          request_payload: Json | null
+          response_payload: Json | null
+          status: string
+          suggested_message: string | null
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          actor_id?: string | null
+          agent?: string
+          conversation_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          lead_id?: string | null
+          message_id?: string | null
+          mode: string
+          next_action?: Json | null
+          request_payload?: Json | null
+          response_payload?: Json | null
+          status?: string
+          suggested_message?: string | null
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actor_id?: string | null
+          agent?: string
+          conversation_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          lead_id?: string | null
+          message_id?: string | null
+          mode?: string
+          next_action?: Json | null
+          request_payload?: Json | null
+          response_payload?: Json | null
+          status?: string
+          suggested_message?: string | null
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_actions_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_actions_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_actions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_actions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_settings: {
         Row: {
           key: string

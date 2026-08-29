@@ -17,7 +17,7 @@ type AgentResult = {
   actionId: string;
   summary: string;
   suggestedMessage: string | null;
-  nextAction: Record<string, unknown> | null;
+  nextAction: Record<string, any> | null;
   usedFallback: boolean;
 };
 
