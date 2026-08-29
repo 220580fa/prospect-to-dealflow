@@ -17,5 +17,6 @@ export default defineMcp({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",
   }),
-  tools: [listLeadsTool, createLeadTool, listTasksTool, createTaskTool, pipelineSummaryTool],
+  // SDK types trip exactOptionalPropertyTypes on the optional outputSchema field.
+  tools: [listLeadsTool, createLeadTool, listTasksTool, createTaskTool, pipelineSummaryTool] as never,
 });
