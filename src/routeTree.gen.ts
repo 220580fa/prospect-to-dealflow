@@ -33,6 +33,7 @@ import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[
 import { Route as AuthenticatedLeadsIndexRouteImport } from './routes/_authenticated/leads/index'
 import { Route as AuthenticatedLeadsLeadIdRouteImport } from './routes/_authenticated/leads/$leadId'
 import { Route as ApiPublicLeadCaptureRouteImport } from './routes/api/public/lead-capture'
+import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp-webhook'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -159,6 +160,12 @@ const ApiPublicLeadCaptureRoute = ApiPublicLeadCaptureRouteImport.update({
   path: '/api/public/lead-capture',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicWhatsappWebhookRoute =
+  ApiPublicWhatsappWebhookRouteImport.update({
+    id: '/api/public/whatsapp-webhook',
+    path: '/api/public/whatsapp-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -183,6 +190,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/leads/$leadId': typeof AuthenticatedLeadsLeadIdRoute
   '/api/public/lead-capture': typeof ApiPublicLeadCaptureRoute
+  '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/leads/': typeof AuthenticatedLeadsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -208,6 +216,7 @@ export interface FileRoutesByTo {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/leads/$leadId': typeof AuthenticatedLeadsLeadIdRoute
   '/api/public/lead-capture': typeof ApiPublicLeadCaptureRoute
+  '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/leads': typeof AuthenticatedLeadsIndexRoute
 }
 export interface FileRoutesById {
@@ -235,6 +244,7 @@ export interface FileRoutesById {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/leads/$leadId': typeof AuthenticatedLeadsLeadIdRoute
   '/api/public/lead-capture': typeof ApiPublicLeadCaptureRoute
+  '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/_authenticated/leads/': typeof AuthenticatedLeadsIndexRoute
 }
 export interface FileRouteTypes {
@@ -262,6 +272,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/leads/$leadId'
     | '/api/public/lead-capture'
+    | '/api/public/whatsapp-webhook'
     | '/leads/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -287,6 +298,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/leads/$leadId'
     | '/api/public/lead-capture'
+    | '/api/public/whatsapp-webhook'
     | '/leads'
   id:
     | '__root__'
@@ -313,6 +325,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/leads/$leadId'
     | '/api/public/lead-capture'
+    | '/api/public/whatsapp-webhook'
     | '/_authenticated/leads/'
   fileRoutesById: FileRoutesById
 }
@@ -326,6 +339,7 @@ export interface RootRouteChildren {
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicLeadCaptureRoute: typeof ApiPublicLeadCaptureRoute
+  ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -498,6 +512,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicLeadCaptureRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/whatsapp-webhook': {
+      id: '/api/public/whatsapp-webhook'
+      path: '/api/public/whatsapp-webhook'
+      fullPath: '/api/public/whatsapp-webhook'
+      preLoaderRoute: typeof ApiPublicWhatsappWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -551,6 +572,7 @@ const rootRouteChildren: RootRouteChildren = {
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicLeadCaptureRoute: ApiPublicLeadCaptureRoute,
+  ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
