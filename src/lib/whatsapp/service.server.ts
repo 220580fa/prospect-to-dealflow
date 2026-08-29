@@ -13,6 +13,9 @@ function normalizeEvolutionBaseUrl(url: string) {
     .replace(/\/+$/, "");
   parsed.search = "";
   parsed.hash = "";
+  if (/^(?:\d{1,3}\.){3}\d{1,3}$/.test(parsed.hostname)) {
+    parsed.hostname = `${parsed.hostname.replaceAll(".", "-")}.sslip.io`;
+  }
   return parsed.toString().replace(/\/$/, "");
 }
 
