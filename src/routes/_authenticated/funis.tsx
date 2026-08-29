@@ -20,6 +20,12 @@ import {
 } from "@/lib/crm-data";
 import { PROSPECT_FUNNEL_ID, SALES_FUNNEL_ID, brl, compact, leadName } from "@/lib/crm";
 import { useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { WhatsAppChat } from "@/components/crm/whatsapp-chat";
+import { useWhatsAppConversations, useWhatsAppRealtime } from "@/lib/whatsapp-data";
+import { runWhatsAppStageAutomations } from "@/lib/whatsapp.functions";
+import { useCurrentProfile } from "@/lib/crm-data";
 
 export const Route = createFileRoute("/_authenticated/funis")({
   head: () => ({
@@ -41,6 +47,7 @@ function FunisPage() {
   const [newLead, setNewLead] = useState(false);
   const [qualifyLead, setQualifyLead] = useState<Row | null>(null);
   const [lossTarget, setLossTarget] = useState<{ table: "leads" | "deals"; id: string } | null>(null);
+  const [chatLead, setChatLead] = useState<Row | null>(null);
 
   const { data: stages = [] } = useStages();
   const { data: leads = [] } = useLeads();
@@ -49,6 +56,19 @@ function FunisPage() {
   const { data: meetings = [] } = useMeetings();
   const { data: profiles = [] } = useProfiles();
   const { data: reasons = [] } = useLossReasons();
+  const { data: conversations = [] } = useWhatsAppConversations();
+  const { data: profile } = useCurrentProfile();
+  const runAutomations = useServerFn(runWhatsAppStageAutomations);
+  useWhatsAppRealtime();
+
+  const unreadByLead = useMemo(() => {
+    const map = new Map<string, number>();
+    conversations.forEach((c) => {
+      if (!c["lead_id"]) return;
+      map.set(c["lead_id"], (map.get(c["lead_id"]) ?? 0) + Number(c["unread_count"] ?? 0));
+    });
+    return map;
+  }, [conversations]);
 
   const isProspect = funnel === PROSPECT_FUNNEL_ID;
   const funnelStages = useMemo(
@@ -93,9 +113,10 @@ function FunisPage() {
         idleDays: idleDaysOf(r),
         hasOverdueTask: overdueByLead.has(isProspect ? r["id"] : r["lead_id"]),
         isNew: Date.now() - new Date(r["created_at"]).getTime() < 1000 * 60 * 60 * 24,
+        unreadCount: unreadByLead.get(isProspect ? r["id"] : r["lead_id"]) ?? 0,
         raw: r,
       }));
-  }, [isProspect, leads, deals, funnel, ownerFilter, profiles, overdueByLead]);
+  }, [isProspect, leads, deals, funnel, ownerFilter, profiles, overdueByLead, unreadByLead]);
 
   const totals = cards.reduce((s, c) => s + c.value, 0);
 
@@ -130,6 +151,9 @@ function FunisPage() {
         title: `Movido para ${stage?.["name"]}`,
       });
       toast.success(`Movido para ${stage?.["name"]}.`);
+      if (isProspect) {
+        runAutomations({ data: { leadId: card.id, stageId } }).catch(() => {});
+      }
       refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Não foi possível mover o card.");
@@ -175,7 +199,19 @@ function FunisPage() {
           })
         }
         onMove={onMove}
+        onWhatsApp={(c) =>
+          setChatLead(isProspect ? c.raw : (leads.find((l) => l["id"] === c.raw["lead_id"]) ?? null))
+        }
       />
+
+      <Dialog open={!!chatLead} onOpenChange={(v) => !v && setChatLead(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>WhatsApp · {chatLead ? leadName(chatLead) : ""}</DialogTitle>
+          </DialogHeader>
+          {chatLead && <WhatsAppChat lead={chatLead} sellerName={profile?.["name"] ?? null} />}
+        </DialogContent>
+      </Dialog>
 
       <LeadDialog
         open={newLead}
