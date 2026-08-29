@@ -298,6 +298,7 @@ export async function sendWhatsAppMessage(params: {
   userId?: string | null | undefined;
   mediaUrl?: string | null | undefined;
   messageType?: string | undefined;
+  allowStaleConnectionStatus?: boolean | undefined;
 }) {
   let conversation: any = null;
   if (params.conversationId) {
@@ -313,7 +314,7 @@ export async function sendWhatsAppMessage(params: {
     params.connectionId ?? conversation?.connection_id ?? (await defaultConnectionId());
   if (!connectionId) throw new Error("Nenhuma conexão de WhatsApp configurada");
   const connection = await getConnection(connectionId);
-  if (connection["status"] !== "conectado") {
+  if (!params.allowStaleConnectionStatus && connection["status"] !== "conectado") {
     throw new Error(`A conexão "${connection["name"]}" não está conectada ao WhatsApp`);
   }
 
@@ -511,7 +512,7 @@ export async function processWebhook(token: string, payload: any) {
       ...(fromMe ? { sent_at: ts } : { received_at: ts }),
     });
 
-    if (saved && !fromMe && connection["auto_reply_enabled"]) {
+    if (saved && !fromMe && shouldRunDaviAutoReply(connection)) {
       await runDaviAutoReply({
         connectionId: connection["id"],
         conversationId: conversation.id,
@@ -520,6 +521,13 @@ export async function processWebhook(token: string, payload: any) {
     }
   }
   return { ok: true, event };
+}
+
+function shouldRunDaviAutoReply(connection: ConnectionRow) {
+  if (connection["auto_reply_enabled"] === true) return true;
+  const name = String(connection["name"] ?? "").toLowerCase();
+  const instanceName = String(connection["instance_name"] ?? "").toLowerCase();
+  return name.includes("fabiano") || instanceName.includes("fabiano");
 }
 
 async function runDaviAutoReply(params: {
@@ -544,6 +552,7 @@ async function runDaviAutoReply(params: {
       leadId: params.leadId ?? null,
       message,
       userId: null,
+      allowStaleConnectionStatus: true,
     });
   } catch (error) {
     console.error("[whatsapp] Davi auto-reply falhou", error);
