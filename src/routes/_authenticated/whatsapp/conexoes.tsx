@@ -444,8 +444,19 @@ function QrDialog({
               {state.loading ? "Gerando QR Code..." : "Clique em “Gerar QR Code”"}
             </div>
           )}
+          {state.pairing && (
+            <p className="text-sm">
+              <span className="text-muted-foreground">Código de pareamento: </span>
+              <span className="font-mono font-bold tracking-widest">{state.pairing}</span>
+            </p>
+          )}
           {state.status === "conectado" && (
             <p className="text-sm text-[var(--signal)]">🟢 Conectado</p>
+          )}
+          {state.qr && (
+            <p className="text-xs text-muted-foreground">
+              O QR Code expira em ~40s. Se não funcionar, clique em “Gerar QR Code” novamente.
+            </p>
           )}
         </div>
         <DialogFooter>
