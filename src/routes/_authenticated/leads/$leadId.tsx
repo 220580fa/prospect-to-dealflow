@@ -22,8 +22,10 @@ import {
   QualificationDialog,
   TaskDialog,
 } from "@/components/crm/dialogs";
+import { WhatsAppChat } from "@/components/crm/whatsapp-chat";
 import {
   useActivities,
+  useCurrentProfile,
   useDeals,
   useLeads,
   useLossReasons,
@@ -67,6 +69,7 @@ function LeadDetail() {
   const { data: deals = [] } = useDeals();
   const { data: activities = [] } = useActivities(leadId);
   const { data: reasons = [] } = useLossReasons();
+  const { data: profile } = useCurrentProfile();
 
   const [editing, setEditing] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
@@ -161,6 +164,7 @@ function LeadDetail() {
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
             <TabsTrigger value="tarefas">Tarefas ({leadTasks.length})</TabsTrigger>
             <TabsTrigger value="reunioes">Reuniões ({leadMeetings.length})</TabsTrigger>
+            <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
             <TabsTrigger value="negocios">Negócios ({leadDeals.length})</TabsTrigger>
             <TabsTrigger value="notas">Notas</TabsTrigger>
           </TabsList>
@@ -218,6 +222,10 @@ function LeadDetail() {
                 <p className="text-sm text-muted-foreground">Nenhuma reunião registrada.</p>
               )}
             </div>
+          </TabsContent>
+
+          <TabsContent value="whatsapp" className="panel mt-4 p-5">
+            <WhatsAppChat lead={lead} sellerName={profile?.["name"] ?? null} />
           </TabsContent>
 
           <TabsContent value="negocios" className="panel mt-4 p-5">
