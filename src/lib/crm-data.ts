@@ -69,7 +69,7 @@ export const useCurrentProfile = () =>
         .insert({
           auth_user_id: user.id,
           name: (user.user_metadata?.['name'] as string) ?? user.email?.split("@")[0] ?? "Usuário",
-          email: user.email,
+          email: user.email ?? null,
           job_title: "Administrador",
         })
         .select()
