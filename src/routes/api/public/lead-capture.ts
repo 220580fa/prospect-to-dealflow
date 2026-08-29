@@ -41,35 +41,104 @@ const schema = z.object({
   _hp: z.string().optional(),
 });
 
+// aceita nomes de campos em português usados por formulários do site
+const ALIASES: Record<string, string> = {
+  nome: "name",
+  "nome-completo": "name",
+  nome_completo: "name",
+  fullname: "name",
+  "full-name": "name",
+  primeiro_nome: "first_name",
+  sobrenome: "last_name",
+  "e-mail": "email",
+  mail: "email",
+  telefone: "phone",
+  celular: "phone",
+  fone: "phone",
+  tel: "phone",
+  zap: "whatsapp",
+  empresa: "company_name",
+  company: "company_name",
+  cargo: "job_title",
+  site: "website",
+  segmento: "segment",
+  cidade: "city",
+  estado: "state",
+  uf: "state",
+  origem: "source",
+  campanha: "campaign",
+  interesse: "product_interest",
+  produto: "product_interest",
+  assunto: "product_interest",
+  mensagem: "message",
+  msg: "message",
+  comentario: "message",
+  "comentário": "message",
+  observacoes: "notes",
+  "observações": "notes",
+};
+
+function normalize(input: Record<string, unknown>) {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(input)) {
+    if (v === undefined || v === null || v === "") continue;
+    const key = ALIASES[k.trim().toLowerCase()] ?? k.trim().toLowerCase();
+    out[key] = typeof v === "string" ? v : String(v);
+  }
+  return out;
+}
+
 export const Route = createFileRoute("/api/public/lead-capture")({
   server: {
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
+      GET: async () =>
+        json({ ok: true, endpoint: "lead-capture", methods: ["POST"], status: "online" }),
       POST: async ({ request }) => {
         const expectedToken = process.env["GLODEU_FORM_TOKEN"];
         if (expectedToken && request.headers.get("x-form-token") !== expectedToken) {
           return json({ error: "Token inválido" }, 401);
         }
 
-        let raw: unknown;
-        const contentType = request.headers.get("content-type") ?? "";
-        try {
-          if (contentType.includes("application/json")) {
-            raw = await request.json();
-          } else {
-            raw = Object.fromEntries((await request.formData()).entries());
+        // Post nativo de <form> (sem fetch): responder com redirect em vez de JSON
+        const accept = request.headers.get("accept") ?? "";
+        const wantsHtml = accept.includes("text/html");
+
+        let raw: Record<string, unknown> = {};
+        const body = await request.text().catch(() => "");
+        if (body) {
+          try {
+            const parsedJson = JSON.parse(body);
+            if (parsedJson && typeof parsedJson === "object") raw = parsedJson as Record<string, unknown>;
+          } catch {
+            const params = new URLSearchParams(body);
+            if ([...params.keys()].length > 0) {
+              raw = Object.fromEntries(params.entries());
+            } else {
+              // multipart/form-data
+              const boundary = (request.headers.get("content-type") ?? "").split("boundary=")[1];
+              if (boundary) {
+                for (const part of body.split(`--${boundary}`)) {
+                  const m = part.match(/name="([^"]+)"\r?\n\r?\n([\s\S]*?)\r?\n?$/);
+                  if (m && m[1]) raw[m[1]] = (m[2] ?? "").trim();
+                }
+              }
+            }
           }
-        } catch {
-          return json({ error: "Payload inválido" }, 400);
+        }
+        if (Object.keys(raw).length === 0) {
+          const qs = new URL(request.url).searchParams;
+          raw = Object.fromEntries(qs.entries());
         }
 
-        const parsed = schema.safeParse(raw);
+        const parsed = schema.safeParse(normalize(raw));
         if (!parsed.success) {
           return json({ error: "Dados inválidos", details: parsed.error.flatten() }, 400);
         }
         const d = parsed.data;
 
         if (d._hp) return json({ ok: true });
+
 
         const fullName = (d.first_name ?? d.name ?? "").trim();
         if (!fullName && !d.email && !d.phone) {
@@ -121,6 +190,17 @@ export const Route = createFileRoute("/api/public/lead-capture")({
           description: notes,
           occurred_at: new Date().toISOString(),
         });
+
+        if (wantsHtml) {
+          const back = request.headers.get("referer");
+          return new Response(null, {
+            status: 303,
+            headers: {
+              ...corsHeaders,
+              Location: back ? `${back.split("?")[0]}?lead=ok` : "https://glodeu.com.br/?lead=ok",
+            },
+          });
+        }
 
         return json({ ok: true, lead_id: lead.id }, 201);
       },

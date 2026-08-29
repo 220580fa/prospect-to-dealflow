@@ -10,7 +10,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { AlertTriangle, Clock, Flame } from "lucide-react";
+import { AlertTriangle, Clock, Flame, Sparkles } from "lucide-react";
 import { brl, compact, daysSince } from "@/lib/crm";
 import { cn } from "@/lib/utils";
 import type { Row } from "@/lib/crm-data";
@@ -26,6 +26,7 @@ export type KanbanCard = {
   score?: number | null;
   idleDays: number | null;
   hasOverdueTask?: boolean;
+  isNew?: boolean;
   raw: Row;
 };
 
@@ -41,16 +42,23 @@ function CardItem({ card, onOpen }: { card: KanbanCard; onOpen: (c: KanbanCard) 
       {...attributes}
       onClick={() => onOpen(card)}
       className={cn(
-        "cursor-grab rounded-lg border border-border bg-[var(--surface)] p-3 transition-colors hover:border-[var(--flow)]/50",
+        "relative cursor-grab rounded-lg border border-border bg-[var(--surface)] p-3 transition-colors hover:border-[var(--flow)]/50",
+        card.isNew && "border-[var(--signal)]/60",
         isDragging && "opacity-40",
       )}
     >
+      {card.isNew && (
+        <span className="absolute -top-2 -right-2 z-10 flex items-center gap-1 rounded-full bg-[var(--signal)] px-2 py-0.5 text-[10px] font-bold tracking-wide text-[#0B1020] uppercase shadow-[0_0_12px_var(--signal)]">
+          <Sparkles className="h-3 w-3" /> Novo
+        </span>
+      )}
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm leading-tight font-semibold">{card.title}</p>
         {card.temperature === "quente" && (
           <Flame className="h-3.5 w-3.5 shrink-0 text-[var(--friction)]" />
         )}
       </div>
+
       {card.subtitle && (
         <p className="mt-1 truncate text-xs text-muted-foreground">{card.subtitle}</p>
       )}
