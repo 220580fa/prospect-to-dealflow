@@ -172,9 +172,9 @@ export async function createLeadFromWhatsApp(
 export async function createConversation(params: {
   connectionId: string;
   phone: string;
-  leadId?: string | null;
-  contactName?: string | null;
-  assignedUserId?: string | null;
+  leadId?: string | null | undefined;
+  contactName?: string | null | undefined;
+  assignedUserId?: string | null | undefined;
 }) {
   const { data: existing } = await db
     .from("whatsapp_conversations")
@@ -275,14 +275,14 @@ export async function saveMessage(msg: Record<string, any>) {
 }
 
 export async function sendWhatsAppMessage(params: {
-  leadId?: string | null;
-  connectionId?: string | null;
-  conversationId?: string | null;
-  phone?: string | null;
+  leadId?: string | null | undefined;
+  connectionId?: string | null | undefined;
+  conversationId?: string | null | undefined;
+  phone?: string | null | undefined;
   message: string;
-  userId?: string | null;
-  mediaUrl?: string | null;
-  messageType?: string;
+  userId?: string | null | undefined;
+  mediaUrl?: string | null | undefined;
+  messageType?: string | undefined;
 }) {
   let conversation: any = null;
   if (params.conversationId) {
@@ -540,8 +540,8 @@ export async function createConnection(input: {
   instanceName: string;
   baseUrl: string;
   apiKey: string;
-  responsibleUserId?: string | null;
-  autoCreateLead?: boolean;
+  responsibleUserId?: string | null | undefined;
+  autoCreateLead?: boolean | undefined;
 }) {
   const { data, error } = await db
     .from("whatsapp_connections")
@@ -570,7 +570,7 @@ export async function createConnection(input: {
   return data;
 }
 
-export async function updateCredentials(connectionId: string, patch: { baseUrl?: string; apiKey?: string }) {
+export async function updateCredentials(connectionId: string, patch: { baseUrl?: string | undefined; apiKey?: string | undefined }) {
   const values: Record<string, unknown> = {};
   if (patch.baseUrl) values["base_url"] = patch.baseUrl.replace(/\/+$/, "");
   if (patch.apiKey) values["api_key"] = patch.apiKey;
