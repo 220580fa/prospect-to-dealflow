@@ -33,6 +33,7 @@ import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[
 import { Route as AuthenticatedLeadsIndexRouteImport } from './routes/_authenticated/leads/index'
 import { Route as AuthenticatedLeadsLeadIdRouteImport } from './routes/_authenticated/leads/$leadId'
 import { Route as AuthenticatedWhatsappIndexRouteImport } from './routes/_authenticated/whatsapp/index'
+import { Route as AuthenticatedWhatsappConexoesRouteImport } from './routes/_authenticated/whatsapp/conexoes'
 import { Route as ApiPublicLeadCaptureRouteImport } from './routes/api/public/lead-capture'
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp-webhook'
 
@@ -162,6 +163,12 @@ const AuthenticatedWhatsappIndexRoute =
     path: '/whatsapp/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedWhatsappConexoesRoute =
+  AuthenticatedWhatsappConexoesRouteImport.update({
+    id: '/whatsapp/conexoes',
+    path: '/whatsapp/conexoes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const ApiPublicLeadCaptureRoute = ApiPublicLeadCaptureRouteImport.update({
   id: '/api/public/lead-capture',
   path: '/api/public/lead-capture',
@@ -196,6 +203,7 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/leads/$leadId': typeof AuthenticatedLeadsLeadIdRoute
+  '/whatsapp/conexoes': typeof AuthenticatedWhatsappConexoesRoute
   '/api/public/lead-capture': typeof ApiPublicLeadCaptureRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/leads/': typeof AuthenticatedLeadsIndexRoute
@@ -223,6 +231,7 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/leads/$leadId': typeof AuthenticatedLeadsLeadIdRoute
+  '/whatsapp/conexoes': typeof AuthenticatedWhatsappConexoesRoute
   '/api/public/lead-capture': typeof ApiPublicLeadCaptureRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/leads': typeof AuthenticatedLeadsIndexRoute
@@ -252,6 +261,7 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/leads/$leadId': typeof AuthenticatedLeadsLeadIdRoute
+  '/_authenticated/whatsapp/conexoes': typeof AuthenticatedWhatsappConexoesRoute
   '/api/public/lead-capture': typeof ApiPublicLeadCaptureRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/_authenticated/leads/': typeof AuthenticatedLeadsIndexRoute
@@ -281,6 +291,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/leads/$leadId'
+    | '/whatsapp/conexoes'
     | '/api/public/lead-capture'
     | '/api/public/whatsapp-webhook'
     | '/leads/'
@@ -308,6 +319,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/leads/$leadId'
+    | '/whatsapp/conexoes'
     | '/api/public/lead-capture'
     | '/api/public/whatsapp-webhook'
     | '/leads'
@@ -336,6 +348,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/leads/$leadId'
+    | '/_authenticated/whatsapp/conexoes'
     | '/api/public/lead-capture'
     | '/api/public/whatsapp-webhook'
     | '/_authenticated/leads/'
@@ -525,6 +538,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWhatsappIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/whatsapp/conexoes': {
+      id: '/_authenticated/whatsapp/conexoes'
+      path: '/whatsapp/conexoes'
+      fullPath: '/whatsapp/conexoes'
+      preLoaderRoute: typeof AuthenticatedWhatsappConexoesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/public/lead-capture': {
       id: '/api/public/lead-capture'
       path: '/api/public/lead-capture'
@@ -557,6 +577,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTarefasRoute: typeof AuthenticatedTarefasRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
   AuthenticatedLeadsLeadIdRoute: typeof AuthenticatedLeadsLeadIdRoute
+  AuthenticatedWhatsappConexoesRoute: typeof AuthenticatedWhatsappConexoesRoute
   AuthenticatedLeadsIndexRoute: typeof AuthenticatedLeadsIndexRoute
   AuthenticatedWhatsappIndexRoute: typeof AuthenticatedWhatsappIndexRoute
 }
@@ -576,6 +597,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTarefasRoute: AuthenticatedTarefasRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
   AuthenticatedLeadsLeadIdRoute: AuthenticatedLeadsLeadIdRoute,
+  AuthenticatedWhatsappConexoesRoute: AuthenticatedWhatsappConexoesRoute,
   AuthenticatedLeadsIndexRoute: AuthenticatedLeadsIndexRoute,
   AuthenticatedWhatsappIndexRoute: AuthenticatedWhatsappIndexRoute,
 }
