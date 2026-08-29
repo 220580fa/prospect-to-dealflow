@@ -38,7 +38,7 @@ function CardItem({
 }: {
   card: KanbanCard;
   onOpen: (c: KanbanCard) => void;
-  onWhatsApp?: (c: KanbanCard) => void;
+  onWhatsApp?: ((c: KanbanCard) => void) | undefined;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: card.id });
   const idle = card.idleDays ?? 0;
@@ -125,7 +125,7 @@ function Column({
   stage: Row;
   cards: KanbanCard[];
   onOpen: (c: KanbanCard) => void;
-  onWhatsApp?: (c: KanbanCard) => void;
+  onWhatsApp?: ((c: KanbanCard) => void) | undefined;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage["id"] });
   const total = cards.reduce((s, c) => s + c.value, 0);
@@ -170,7 +170,7 @@ export function KanbanBoard({
   cards: KanbanCard[];
   onOpen: (c: KanbanCard) => void;
   onMove: (card: KanbanCard, stageId: string) => void;
-  onWhatsApp?: (c: KanbanCard) => void;
+  onWhatsApp?: ((c: KanbanCard) => void) | undefined;
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
