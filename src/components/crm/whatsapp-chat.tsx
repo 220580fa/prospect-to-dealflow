@@ -1,16 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, CheckCheck, Clock3, Send, TriangleAlert, Zap } from "lucide-react";
+import {
+  Bot,
+  Check,
+  CheckCheck,
+  ClipboardCheck,
+  Clock3,
+  Send,
+  TriangleAlert,
+  Zap,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { sendWhatsAppMessage } from "@/lib/whatsapp.functions";
+import { runNaiaAgentAction } from "@/lib/agent.functions";
 import {
   markConversationRead,
   useLeadConversation,
@@ -56,9 +62,11 @@ export function WhatsAppChat({
   const { data: connections = [] } = useWhatsAppConnections();
   const { data: quickReplies = [] } = useQuickReplies();
   const send = useServerFn(sendWhatsAppMessage);
+  const runNaia = useServerFn(runNaiaAgentAction);
 
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [thinking, setThinking] = useState<"reply" | "action" | null>(null);
   const [connectionId, setConnectionId] = useState<string>("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -66,6 +74,8 @@ export function WhatsAppChat({
     () => connections.filter((c) => c["status"] === "conectado"),
     [connections],
   );
+  const currentConversationId = conversation?.["id"] ?? null;
+  const currentUnreadCount = Number(conversation?.["unread_count"] ?? 0);
   const activeConnection =
     connections.find((c) => c["id"] === (conversation?.["connection_id"] ?? connectionId)) ??
     connected[0] ??
@@ -77,15 +87,15 @@ export function WhatsAppChat({
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" });
-  }, [messages.length, conversation?.["id"]]);
+  }, [messages.length, currentConversationId]);
 
   useEffect(() => {
-    if (conversation?.["id"] && Number(conversation["unread_count"] ?? 0) > 0) {
-      markConversationRead(conversation["id"]).then(() =>
+    if (currentConversationId && currentUnreadCount > 0) {
+      markConversationRead(currentConversationId).then(() =>
         qc.invalidateQueries({ queryKey: ["whatsapp_conversations"] }),
       );
     }
-  }, [conversation?.["id"], conversation?.["unread_count"], qc]);
+  }, [currentConversationId, currentUnreadCount, qc]);
 
   const applyQuickReply = (body: string) => {
     const name = lead ? leadName(lead) : (conversation?.["contact_name"] ?? "");
@@ -134,6 +144,48 @@ export function WhatsAppChat({
     }
   };
 
+  const onNaiaReply = async () => {
+    if (thinking) return;
+    setThinking("reply");
+    try {
+      const result = await runNaia({
+        data: {
+          mode: "suggest_reply",
+          leadId: lead?.["id"] ?? conversation?.["lead_id"] ?? null,
+          conversationId: conversation?.["id"] ?? null,
+        },
+      });
+      if (result.suggestedMessage) setText(result.suggestedMessage);
+      toast.success(result.usedFallback ? "Sugestão local gerada." : "Naia sugeriu uma resposta.");
+      qc.invalidateQueries({ queryKey: ["activities"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível acionar a Naia.");
+    } finally {
+      setThinking(null);
+    }
+  };
+
+  const onNaiaNextAction = async () => {
+    if (thinking) return;
+    setThinking("action");
+    try {
+      await runNaia({
+        data: {
+          mode: "execute_next_action",
+          leadId: lead?.["id"] ?? conversation?.["lead_id"] ?? null,
+          conversationId: conversation?.["id"] ?? null,
+        },
+      });
+      toast.success("Próxima ação criada pela Naia.");
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["activities"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível criar a próxima ação.");
+    } finally {
+      setThinking(null);
+    }
+  };
+
   return (
     <div className={cn("flex h-[540px] flex-col", className)}>
       <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
@@ -175,9 +227,7 @@ export function WhatsAppChat({
               <div
                 className={cn(
                   "max-w-[78%] rounded-lg px-3 py-2 text-sm",
-                  out
-                    ? "bg-[var(--signal)]/15 text-foreground"
-                    : "bg-secondary text-foreground",
+                  out ? "bg-[var(--signal)]/15 text-foreground" : "bg-secondary text-foreground",
                   m["status"] === "failed" && "border border-[var(--friction)]",
                 )}
               >
@@ -216,6 +266,24 @@ export function WhatsAppChat({
 
       <div className="border-t border-border pt-3">
         <div className="flex items-end gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            title="Sugerir resposta com Naia"
+            onClick={onNaiaReply}
+            disabled={!!thinking}
+          >
+            <Bot className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            title="Criar próxima ação"
+            onClick={onNaiaNextAction}
+            disabled={!!thinking}
+          >
+            <ClipboardCheck className="h-4 w-4" />
+          </Button>
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" size="icon" title="Respostas rápidas">
