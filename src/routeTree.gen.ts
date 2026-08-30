@@ -34,6 +34,7 @@ import { Route as AuthenticatedLeadsIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedLeadsLeadIdRouteImport } from './routes/_authenticated/leads/$leadId'
 import { Route as AuthenticatedWhatsappIndexRouteImport } from './routes/_authenticated/whatsapp/index'
 import { Route as AuthenticatedWhatsappConexoesRouteImport } from './routes/_authenticated/whatsapp/conexoes'
+import { Route as ApiAgentSummaryRouteImport } from './routes/api/agent/summary'
 import { Route as ApiPublicLeadCaptureRouteImport } from './routes/api/public/lead-capture'
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp-webhook'
 
@@ -169,6 +170,11 @@ const AuthenticatedWhatsappConexoesRoute =
     path: '/whatsapp/conexoes',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiAgentSummaryRoute = ApiAgentSummaryRouteImport.update({
+  id: '/api/agent/summary',
+  path: '/api/agent/summary',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicLeadCaptureRoute = ApiPublicLeadCaptureRouteImport.update({
   id: '/api/public/lead-capture',
   path: '/api/public/lead-capture',
@@ -204,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/leads/$leadId': typeof AuthenticatedLeadsLeadIdRoute
   '/whatsapp/conexoes': typeof AuthenticatedWhatsappConexoesRoute
+  '/api/agent/summary': typeof ApiAgentSummaryRoute
   '/api/public/lead-capture': typeof ApiPublicLeadCaptureRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/leads/': typeof AuthenticatedLeadsIndexRoute
@@ -232,6 +239,7 @@ export interface FileRoutesByTo {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/leads/$leadId': typeof AuthenticatedLeadsLeadIdRoute
   '/whatsapp/conexoes': typeof AuthenticatedWhatsappConexoesRoute
+  '/api/agent/summary': typeof ApiAgentSummaryRoute
   '/api/public/lead-capture': typeof ApiPublicLeadCaptureRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/leads': typeof AuthenticatedLeadsIndexRoute
@@ -262,6 +270,7 @@ export interface FileRoutesById {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/leads/$leadId': typeof AuthenticatedLeadsLeadIdRoute
   '/_authenticated/whatsapp/conexoes': typeof AuthenticatedWhatsappConexoesRoute
+  '/api/agent/summary': typeof ApiAgentSummaryRoute
   '/api/public/lead-capture': typeof ApiPublicLeadCaptureRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/_authenticated/leads/': typeof AuthenticatedLeadsIndexRoute
@@ -292,6 +301,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/leads/$leadId'
     | '/whatsapp/conexoes'
+    | '/api/agent/summary'
     | '/api/public/lead-capture'
     | '/api/public/whatsapp-webhook'
     | '/leads/'
@@ -320,6 +330,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/leads/$leadId'
     | '/whatsapp/conexoes'
+    | '/api/agent/summary'
     | '/api/public/lead-capture'
     | '/api/public/whatsapp-webhook'
     | '/leads'
@@ -349,6 +360,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/leads/$leadId'
     | '/_authenticated/whatsapp/conexoes'
+    | '/api/agent/summary'
     | '/api/public/lead-capture'
     | '/api/public/whatsapp-webhook'
     | '/_authenticated/leads/'
@@ -364,6 +376,7 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiAgentSummaryRoute: typeof ApiAgentSummaryRoute
   ApiPublicLeadCaptureRoute: typeof ApiPublicLeadCaptureRoute
   ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
 }
@@ -545,6 +558,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWhatsappConexoesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/agent/summary': {
+      id: '/api/agent/summary'
+      path: '/api/agent/summary'
+      fullPath: '/api/agent/summary'
+      preLoaderRoute: typeof ApiAgentSummaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/lead-capture': {
       id: '/api/public/lead-capture'
       path: '/api/public/lead-capture'
@@ -615,6 +635,7 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiAgentSummaryRoute: ApiAgentSummaryRoute,
   ApiPublicLeadCaptureRoute: ApiPublicLeadCaptureRoute,
   ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,
 }
