@@ -31,6 +31,7 @@ import {
   leadName,
 } from "@/lib/crm";
 import { insertRow, logActivity, updateRow, type Row } from "@/lib/crm-data";
+import { scheduleGoogleMeeting } from "@/lib/calendar.functions";
 
 /* ---------------- Lead ---------------- */
 
@@ -331,32 +332,67 @@ export function MeetingDialog({
     participants: "",
     meeting_url: "",
     notes: "",
+    duration: 60,
   });
+  const [useGoogle, setUseGoogle] = useState(true);
+  const [guestEmail, setGuestEmail] = useState("");
+  const [saving, setSaving] = useState(false);
   const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
+
+  const email = (guestEmail || (lead?.["email"] as string) || "").trim();
 
   const save = async () => {
     if (!lead) return;
+    setSaving(true);
     try {
+      const startISO = new Date(form["scheduled_at"]).toISOString();
+      let meetingUrl: string | null = form["meeting_url"] || null;
+
+      if (useGoogle) {
+        if (!email) {
+          toast.error("Informe o e-mail do lead para enviar o convite.");
+          setSaving(false);
+          return;
+        }
+        const extras = String(form["participants"] ?? "")
+          .split(/[;,\s]+/)
+          .filter((v) => v.includes("@"));
+        const ev = await scheduleGoogleMeeting({
+          data: {
+            summary: `Reunião · ${leadName(lead)}`,
+            description: form["notes"] || null,
+            startISO,
+            minutes: Number(form["duration"]) || 60,
+            attendees: Array.from(new Set([email, ...extras])),
+          },
+        });
+        meetingUrl = ev.meetLink ?? ev.htmlLink ?? meetingUrl;
+      }
+
       await insertRow("meetings", {
         lead_id: lead["id"],
         owner_id: lead["owner_id"] ?? profiles[0]?.["id"] ?? null,
-        scheduled_at: new Date(form["scheduled_at"]).toISOString(),
+        scheduled_at: startISO,
         participants: form["participants"] || null,
-        meeting_url: form["meeting_url"] || null,
+        meeting_url: meetingUrl,
         notes: form["notes"] || null,
         status: "agendada",
       });
       await logActivity({
         lead_id: lead["id"],
         type: "reuniao",
-        title: "Reunião agendada",
-        description: new Date(form["scheduled_at"]).toLocaleString("pt-BR"),
+        title: useGoogle ? "Reunião agendada (convite enviado por e-mail)" : "Reunião agendada",
+        description: `${new Date(startISO).toLocaleString("pt-BR")}${meetingUrl ? ` · ${meetingUrl}` : ""}`,
       });
-      toast.success("Reunião agendada.");
+      toast.success(
+        useGoogle ? `Reunião criada na Google Agenda e convite enviado para ${email}.` : "Reunião agendada.",
+      );
       onSaved();
       onOpenChange(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao agendar reunião.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -375,12 +411,38 @@ export function MeetingDialog({
               onChange={(e) => set("scheduled_at", e.target.value)}
             />
           </Field>
-          <Field label="Participantes">
+          <Field label="Duração (minutos)">
+            <Input
+              type="number"
+              min={15}
+              step={15}
+              value={form["duration"]}
+              onChange={(e) => set("duration", Number(e.target.value))}
+            />
+          </Field>
+          <Field label="Participantes (e-mails extras)">
             <Input value={form["participants"]} onChange={(e) => set("participants", e.target.value)} />
           </Field>
-          <Field label="Link da reunião">
-            <Input value={form["meeting_url"]} onChange={(e) => set("meeting_url", e.target.value)} />
-          </Field>
+          <label className="flex items-start gap-3 text-sm">
+            <Checkbox checked={useGoogle} onCheckedChange={(v) => setUseGoogle(Boolean(v))} />
+            <span>
+              Criar na Google Agenda com link do Meet e enviar convite por e-mail ao lead
+            </span>
+          </label>
+          {useGoogle ? (
+            <Field label="E-mail do lead">
+              <Input
+                type="email"
+                placeholder={(lead?.["email"] as string) ?? "email@empresa.com"}
+                value={guestEmail || (lead?.["email"] as string) || ""}
+                onChange={(e) => setGuestEmail(e.target.value)}
+              />
+            </Field>
+          ) : (
+            <Field label="Link da reunião">
+              <Input value={form["meeting_url"]} onChange={(e) => set("meeting_url", e.target.value)} />
+            </Field>
+          )}
           <Field label="Pauta">
             <Textarea value={form["notes"]} onChange={(e) => set("notes", e.target.value)} />
           </Field>
@@ -389,7 +451,9 @@ export function MeetingDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={save}>Agendar</Button>
+          <Button onClick={save} disabled={saving}>
+            {saving ? "Agendando..." : "Agendar"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
