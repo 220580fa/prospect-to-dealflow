@@ -411,12 +411,38 @@ export function MeetingDialog({
               onChange={(e) => set("scheduled_at", e.target.value)}
             />
           </Field>
-          <Field label="Participantes">
+          <Field label="Duração (minutos)">
+            <Input
+              type="number"
+              min={15}
+              step={15}
+              value={form["duration"]}
+              onChange={(e) => set("duration", Number(e.target.value))}
+            />
+          </Field>
+          <Field label="Participantes (e-mails extras)">
             <Input value={form["participants"]} onChange={(e) => set("participants", e.target.value)} />
           </Field>
-          <Field label="Link da reunião">
-            <Input value={form["meeting_url"]} onChange={(e) => set("meeting_url", e.target.value)} />
-          </Field>
+          <label className="flex items-start gap-3 text-sm">
+            <Checkbox checked={useGoogle} onCheckedChange={(v) => setUseGoogle(Boolean(v))} />
+            <span>
+              Criar na Google Agenda com link do Meet e enviar convite por e-mail ao lead
+            </span>
+          </label>
+          {useGoogle ? (
+            <Field label="E-mail do lead">
+              <Input
+                type="email"
+                placeholder={(lead?.["email"] as string) ?? "email@empresa.com"}
+                value={guestEmail || (lead?.["email"] as string) || ""}
+                onChange={(e) => setGuestEmail(e.target.value)}
+              />
+            </Field>
+          ) : (
+            <Field label="Link da reunião">
+              <Input value={form["meeting_url"]} onChange={(e) => set("meeting_url", e.target.value)} />
+            </Field>
+          )}
           <Field label="Pauta">
             <Textarea value={form["notes"]} onChange={(e) => set("notes", e.target.value)} />
           </Field>
@@ -425,7 +451,9 @@ export function MeetingDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={save}>Agendar</Button>
+          <Button onClick={save} disabled={saving}>
+            {saving ? "Agendando..." : "Agendar"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
