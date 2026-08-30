@@ -31,6 +31,7 @@ import {
   leadName,
 } from "@/lib/crm";
 import { insertRow, logActivity, updateRow, type Row } from "@/lib/crm-data";
+import { scheduleGoogleMeeting } from "@/lib/calendar.functions";
 
 /* ---------------- Lead ---------------- */
 
