@@ -80,7 +80,16 @@ async function call(
     });
   } catch (error) {
     const detail = error instanceof Error ? error.message : "falha de rede";
-    throw new Error(`Não foi possível acessar a Evolution API: ${detail}`);
+    const host = (() => {
+      try {
+        return new URL(apiBaseUrl(c.baseUrl)).host;
+      } catch {
+        return c.baseUrl;
+      }
+    })();
+    throw new Error(
+      `O servidor da Evolution API (${host}) não respondeu (${detail}). Verifique se a VPS está ligada, se a porta está liberada no firewall e se a URL cadastrada está correta — use "Editar credenciais" para atualizar o endereço.`,
+    );
   }
   const text = await res.text();
   let data: any = null;

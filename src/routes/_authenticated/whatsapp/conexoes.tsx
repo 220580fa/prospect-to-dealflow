@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   Link2,
   Loader2,
+  Pencil,
   Plus,
   QrCode,
   RefreshCw,
@@ -33,6 +34,7 @@ import {
   getWhatsAppQrCode,
   getWhatsAppStatus,
   getWhatsAppWebhookUrl,
+  updateWhatsAppCredentials,
 } from "@/lib/whatsapp.functions";
 import { cn } from "@/lib/utils";
 
@@ -63,6 +65,7 @@ function ConexoesPage() {
   const { data: profiles = [] } = useProfiles();
   const [creating, setCreating] = useState(false);
   const [qrFor, setQrFor] = useState<Row | null>(null);
+  const [editFor, setEditFor] = useState<Row | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["whatsapp_connections"] });
@@ -174,6 +177,14 @@ function ConexoesPage() {
                   size="sm"
                   variant="outline"
                   disabled={busy === c["id"]}
+                  onClick={() => setEditFor(c)}
+                >
+                  <Pencil className="mr-2 h-4 w-4" /> Editar credenciais
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={busy === c["id"]}
                   onClick={() =>
                     run(
                       c["id"],
@@ -217,6 +228,11 @@ function ConexoesPage() {
         open={creating}
         onOpenChange={setCreating}
         profiles={profiles}
+        onSaved={refresh}
+      />
+      <EditCredentialsDialog
+        connection={editFor}
+        onOpenChange={() => setEditFor(null)}
         onSaved={refresh}
       />
       <QrDialog connection={qrFor} onOpenChange={() => setQrFor(null)} onDone={refresh} />
@@ -334,6 +350,85 @@ function NewConnectionDialog({
             disabled={saving || !form.name || !form.instanceName || !form.baseUrl || !form.apiKey}
           >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Criar conexão
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditCredentialsDialog({
+  connection,
+  onOpenChange,
+  onSaved,
+}: {
+  connection: Row | null;
+  onOpenChange: (v: boolean) => void;
+  onSaved: () => void;
+}) {
+  const update = useServerFn(updateWhatsAppCredentials);
+  const [baseUrl, setBaseUrl] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (connection) {
+      setBaseUrl("");
+      setApiKey("");
+    }
+  }, [connection?.["id"]]);
+
+  const submit = async () => {
+    if (!connection) return;
+    setSaving(true);
+    try {
+      await update({
+        data: {
+          connectionId: connection["id"],
+          ...(baseUrl.trim() ? { baseUrl: baseUrl.trim() } : {}),
+          ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
+        },
+      });
+      toast.success("Credenciais atualizadas. Tente gerar o QR Code novamente.");
+      onOpenChange(false);
+      onSaved();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível atualizar as credenciais.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={!!connection} onOpenChange={(v) => !v && onOpenChange(false)}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Editar credenciais — {connection?.["name"] ?? ""}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Preencha apenas o que quiser trocar. Use a URL raiz da Evolution API (sem /manager) e,
+            de preferência, um domínio com HTTPS apontando para a VPS.
+          </p>
+          <Field label="Nova URL da Evolution API">
+            <Input
+              value={baseUrl}
+              onChange={(e) => setBaseUrl(e.target.value)}
+              placeholder="https://evolution.seudominio.com.br"
+            />
+          </Field>
+          <Field label="Nova API Key">
+            <Input
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="••••••••"
+            />
+          </Field>
+        </div>
+        <DialogFooter>
+          <Button onClick={submit} disabled={saving || (!baseUrl.trim() && !apiKey.trim())}>
+            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Salvar
           </Button>
         </DialogFooter>
       </DialogContent>
